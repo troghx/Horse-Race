@@ -134,7 +134,7 @@ function setActivePeriod(p) {
 
 function renderSummary(meta, race) {
   summaryCards.textContent =
-    `${formatDate(race.anchor)} · ${race.label} · ${formatNumber(race.totalEntries)} reg · ${formatNumber(race.activeAgents)} vendedores`;
+    `${formatDate(race.anchor)} · ${race.label} · ${formatNumber(race.totalEntries)} Ventas/Deals · ${formatNumber(race.activeAgents)} vendedores`;
   rangeLabel.textContent = `${formatDate(race.start)} — ${formatDate(race.end)}`;
 }
 
@@ -163,7 +163,7 @@ function renderLeaderBanner(race) {
 
 function renderTrack(racers, leaderCount) {
   if (!racers.length) {
-    track.innerHTML = `<div class="empty-state">No hay registros para ese corte.</div>`;
+    track.innerHTML = `<div class="empty-state">No hay Ventas/Deals para ese corte.</div>`;
     return;
   }
 
@@ -174,8 +174,9 @@ function renderTrack(racers, leaderCount) {
     .map((r) => {
       const progress = Math.min(r.count / target, 0.88);
       const icon = isFemale(r.agent) ? femaleIcon(r.colorHue) : maleIcon(r.colorHue);
+      const laneClass = r.rank === 1 ? "lane--gold" : r.rank === 2 ? "lane--silver" : r.rank === 3 ? "lane--bronze" : "";
       return `
-        <article class="lane" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || 'transparent'}">
+        <article class="lane ${laneClass}" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || 'transparent'}">
           <div class="lane-rank">
             <span class="rank-pill">${r.rank}</span>
             <div>
@@ -189,7 +190,7 @@ function renderTrack(racers, leaderCount) {
           </div>
           <div class="lane-score">
             <strong>${formatNumber(r.count)}</strong>
-            <span class="amount-green">${r.amount ? formatMoney(r.amount) : "reg"}</span>
+            <span class="amount-green">${r.amount ? formatMoney(r.amount) : "Ventas/Deals"}</span>
           </div>
         </article>`;
     })
@@ -246,12 +247,6 @@ function renderSpotlight(race) {
 
 const podium = $("#podium");
 
-function getInitials(name) {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 1) return parts[0][0].toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 function renderPodium(racers) {
   if (racers.length < 3) {
     podium.innerHTML = "";
@@ -266,7 +261,6 @@ function renderPodium(racers) {
 
   podium.innerHTML = medals.map(({ r, cls }) => `
     <div class="podium-card podium-card--${cls}">
-      <div class="podium-avatar">${getInitials(r.agent)}</div>
       <div class="podium-info">
         <div class="podium-name">${r.agent}</div>
         <div class="podium-team">
@@ -293,7 +287,7 @@ function renderLeaderboard(racers) {
         <td data-label="Posicion">${r.rank}</td>
         <td data-label="Vendedor"><span class="badge"><span class="dot" style="--hue:${r.colorHue}"></span>${r.agent}</span></td>
         <td data-label="Equipo"><span class="team-dot" style="background:${r.teamColor}"></span>${r.team}</td>
-        <td data-label="Registros">${formatNumber(r.count)}</td>
+        <td data-label="Ventas/Deals">${formatNumber(r.count)}</td>
         <td data-label="Deuda" class="amount-green">${formatMoney(r.amount || 0)}</td>
         <td>${r.gap === 0 ? "Lider" : `−${formatNumber(r.gap)}`}</td>
       </tr>`)
