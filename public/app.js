@@ -22,6 +22,7 @@ const teamEditor = $("#teamEditor");
 const closeModalBtn = $("#closeModal");
 const saveTeamsBtn = $("#saveTeams");
 const editTeamsBtn = $("#editTeamsBtn");
+const TEAM_EDITOR_PIN = "75572144";
 
 /* ══ Theme ══ */
 
@@ -300,6 +301,14 @@ let editorTeams = {};
 let editorAssignments = {};
 
 async function openTeamEditor() {
+  const pin = window.prompt("Ingresa el PIN para editar equipos");
+  if (pin === null) return;
+
+  if (pin.trim() !== TEAM_EDITOR_PIN) {
+    window.alert("PIN incorrecto");
+    return;
+  }
+
   try {
     const res = await fetch("/api/teams");
     const data = await res.json();

@@ -35,6 +35,25 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; }
 html, body { min-height: 100%; }
 
+html {
+  scrollbar-width: none;
+}
+
+body,
+.table-wrap,
+.team-editor {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.table-wrap::-webkit-scrollbar,
+.team-editor::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 body {
   font-family: "Space Grotesk", sans-serif;
   background: var(--bg);
@@ -414,6 +433,11 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 .track { display: grid; gap: 0.55rem; }
 
 .lane {
+  --lane-pill-size: 1.9rem;
+  --lane-name-size: 0.88rem;
+  --lane-subtitle-size: 0.73rem;
+  --lane-score-size: 1.15rem;
+  --lane-track-height: 48px;
   position: relative;
   display: grid;
   grid-template-columns: 170px minmax(0, 1fr) 68px;
@@ -462,12 +486,6 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   z-index: 2;
 }
 
-.lane--gold,
-.lane--silver,
-.lane--bronze {
-  box-shadow: var(--neo-out);
-}
-
 .lane--gold::before,
 .lane--silver::before,
 .lane--bronze::before {
@@ -477,19 +495,58 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 .lane--gold {
   --medal-color: rgba(255,215,0,0.8);
   --medal-bright: #fff8a0;
+  --lane-pill-size: 2.3rem;
+  --lane-name-size: 1rem;
+  --lane-subtitle-size: 0.79rem;
+  --lane-score-size: 1.45rem;
+  --lane-track-height: 54px;
   border-color: rgba(255,215,0,0.25);
+  box-shadow: 0 10px 24px rgba(214,172,33,0.22), var(--neo-out);
+}
+
+.lane--gold .rank-pill {
+  color: #9c6a00;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.7),
+    0 6px 14px rgba(214,172,33,0.18);
 }
 
 .lane--silver {
   --medal-color: rgba(160,170,185,0.75);
   --medal-bright: #e8edf4;
+  --lane-pill-size: 2.08rem;
+  --lane-name-size: 0.94rem;
+  --lane-subtitle-size: 0.76rem;
+  --lane-score-size: 1.3rem;
+  --lane-track-height: 51px;
   border-color: rgba(192,192,192,0.2);
+  box-shadow: 0 7px 18px rgba(150,159,173,0.16), var(--neo-out);
+}
+
+.lane--silver .rank-pill {
+  color: #6d7682;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.75),
+    0 5px 12px rgba(138,142,150,0.14);
 }
 
 .lane--bronze {
   --medal-color: rgba(205,127,50,0.75);
   --medal-bright: #e8a860;
+  --lane-pill-size: 1.98rem;
+  --lane-name-size: 0.91rem;
+  --lane-subtitle-size: 0.74rem;
+  --lane-score-size: 1.22rem;
+  --lane-track-height: 49px;
   border-color: rgba(205,127,50,0.2);
+  box-shadow: 0 6px 16px rgba(176,108,48,0.14), var(--neo-out);
+}
+
+.lane--bronze .rank-pill {
+  color: #a66122;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.65),
+    0 5px 12px rgba(176,108,48,0.12);
 }
 
 .lane-rank {
@@ -500,8 +557,8 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 }
 
 .rank-pill {
-  width: 1.9rem;
-  height: 1.9rem;
+  width: var(--lane-pill-size);
+  height: var(--lane-pill-size);
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -515,13 +572,13 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 
 .agent-name {
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: var(--lane-name-size);
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
-.agent-subtitle { color: var(--muted); font-size: 0.73rem; }
+.agent-subtitle { color: var(--muted); font-size: var(--lane-subtitle-size); }
 
-.lane-track { position: relative; height: 48px; }
+.lane-track { position: relative; height: var(--lane-track-height); }
 
 .lane-progress {
   position: absolute;
@@ -576,7 +633,7 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 }
 
 .lane-score { text-align: right; }
-.lane-score strong { display: block; font-family: "Outfit", sans-serif; font-size: 1.15rem; }
+.lane-score strong { display: block; font-family: "Outfit", sans-serif; font-size: var(--lane-score-size); }
 .lane-score span { color: var(--muted); font-size: 0.7rem; }
 
 .amount-green { color: #22c55e !important; font-weight: 600; }
@@ -1096,7 +1153,28 @@ tbody tr:hover { background: var(--hover-row); }
     grid-row: 1;
     text-align: right;
   }
-  .lane-score strong { font-size: 1rem; }
+  .lane-score strong { font-size: var(--lane-score-size); }
+  .lane--gold {
+    --lane-pill-size: 2.05rem;
+    --lane-name-size: 0.95rem;
+    --lane-subtitle-size: 0.76rem;
+    --lane-score-size: 1.22rem;
+    --lane-track-height: 52px;
+  }
+  .lane--silver {
+    --lane-pill-size: 1.95rem;
+    --lane-name-size: 0.91rem;
+    --lane-subtitle-size: 0.74rem;
+    --lane-score-size: 1.14rem;
+    --lane-track-height: 50px;
+  }
+  .lane--bronze {
+    --lane-pill-size: 1.9rem;
+    --lane-name-size: 0.89rem;
+    --lane-subtitle-size: 0.73rem;
+    --lane-score-size: 1.08rem;
+    --lane-track-height: 49px;
+  }
   .lane-track {
     grid-column: 1 / -1;
     grid-row: 2;
