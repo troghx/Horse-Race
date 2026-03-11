@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 72" role="img" aria-label="Cero Deuda">
+  <path
+    fill="#67D43B"
+    fill-rule="evenodd"
+    d="M51 0c4.971 0 9 4.029 9 9v45c0 5.523-4.477 10-10 10H35C21.193 64 10 52.807 10 39s11.193-25 25-25h7V9c0-4.971 4.029-9 9-9Zm-9 30h-7c-4.971 0-9 4.029-9 9s4.029 9 9 9h7V30Z"
+    clip-rule="evenodd"
+  />
+  <path
+    fill="#B7B7B7"
+    d="M40 22h-5c-9.389 0-17 7.611-17 17s7.611 17 17 17h5v-8h-5c-4.971 0-9-4.029-9-9s4.029-9 9-9h5v-8Z"
+  />
+</svg>

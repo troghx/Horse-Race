@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sales Grand Prix</title>
+    <title>Grand Prix</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -20,7 +21,8 @@
         <div class="topbar-left">
           <div class="brand-lockup">
             <div class="brand-title-row">
-              <h1>Sales Grand Prix</h1>
+              <img src="/cd-logo.png" alt="Logo" class="brand-logo" />
+              <h1>Grand Prix</h1>
               <div class="trophy-badge" aria-hidden="true">
                 <svg class="trophy-icon" viewBox="0 0 64 64" fill="none">
                   <defs>
@@ -45,11 +47,7 @@
           </div>
         </div>
         <div class="topbar-center">
-          <div class="leader-banner" id="leaderBanner">
-            <p class="leader-banner-label">Escuderia puntera</p>
-            <div class="leader-banner-main">Cargando...</div>
-            <p class="leader-banner-meta">Esperando datos del corte</p>
-          </div>
+          <section class="podium" id="podium"></section>
         </div>
         <div class="topbar-right">
           <div class="segmented" id="periodSwitcher">
@@ -79,6 +77,13 @@
         </section>
 
         <div class="sidebar">
+          <!-- Leader banner -->
+          <div class="leader-banner" id="leaderBanner">
+            <p class="leader-banner-label">Escuderia puntera</p>
+            <div class="leader-banner-main">Cargando...</div>
+            <p class="leader-banner-meta">Esperando datos del corte</p>
+          </div>
+
           <!-- Team standings -->
           <div class="sidebar-block">
             <div class="sidebar-head">
@@ -90,17 +95,8 @@
             <div class="team-cards" id="teamBar"></div>
           </div>
 
-          <!-- Spotlight -->
-          <aside class="panel spotlight" id="spotlight">
-            <p class="eyebrow">Pole position</p>
-            <h2>Esperando datos</h2>
-            <p class="spotlight-copy">Cargando...</p>
-          </aside>
         </div>
       </div>
-
-      <!-- Podium -->
-      <section class="podium" id="podium"></section>
 
       <!-- Leaderboard -->
       <section class="panel leaderboard">
@@ -116,11 +112,12 @@
                 <th>Vendedor</th>
                 <th>Equipo</th>
                 <th>Registros</th>
+                <th>Deuda</th>
                 <th>Gap</th>
               </tr>
             </thead>
             <tbody id="leaderboardBody">
-              <tr><td colspan="5">Cargando...</td></tr>
+              <tr><td colspan="6">Cargando...</td></tr>
             </tbody>
           </table>
         </div>

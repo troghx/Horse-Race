@@ -9,7 +9,7 @@ const $ = (s) => document.querySelector(s);
 const summaryCards = $("#summaryCards");
 const rangeLabel = $("#rangeLabel");
 const track = $("#track");
-const spotlight = $("#spotlight");
+const spotlight = $("#spotlight"); // may be null if removed from DOM
 const leaderboardBody = $("#leaderboardBody");
 const anchorDateInput = $("#anchorDate");
 const refreshButton = $("#refreshButton");
@@ -110,6 +110,7 @@ function hashString(v) {
 }
 
 function formatNumber(v) { return new Intl.NumberFormat("es-MX").format(v); }
+function formatMoney(v) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v); }
 
 function formatDate(v) {
   return new Intl.DateTimeFormat("es-MX", {
@@ -188,7 +189,7 @@ function renderTrack(racers, leaderCount) {
           </div>
           <div class="lane-score">
             <strong>${formatNumber(r.count)}</strong>
-            <span>reg</span>
+            <span class="amount-green">${r.amount ? formatMoney(r.amount) : "reg"}</span>
           </div>
         </article>`;
     })
@@ -214,6 +215,7 @@ function renderTeamBar(standings) {
 /* ══ Render: spotlight ══ */
 
 function renderSpotlight(race) {
+  if (!spotlight) return;
   const leader = race.racers[0];
   if (!leader) {
     spotlight.innerHTML = `
@@ -264,15 +266,15 @@ function renderPodium(racers) {
 
   podium.innerHTML = medals.map(({ r, cls }) => `
     <div class="podium-card podium-card--${cls}">
-      <span class="podium-rank">${r.rank}</span>
       <div class="podium-avatar">${getInitials(r.agent)}</div>
-      <div class="podium-name">${r.agent}</div>
-      <div class="podium-team">
-        <span class="podium-team-dot" style="background:${r.teamColor}"></span>
-        ${r.team}
+      <div class="podium-info">
+        <div class="podium-name">${r.agent}</div>
+        <div class="podium-team">
+          <span class="podium-team-dot" style="background:${r.teamColor}"></span>
+          ${r.team}
+        </div>
       </div>
       <div class="podium-score">${formatNumber(r.count)}</div>
-      <div class="podium-meta">${r.gap === 0 ? "Lider" : `−${r.gap} del lider`} · ${r.team}</div>
     </div>
   `).join("");
 }
@@ -281,7 +283,7 @@ function renderPodium(racers) {
 
 function renderLeaderboard(racers) {
   if (!racers.length) {
-    leaderboardBody.innerHTML = `<tr><td colspan="5">Sin vendedores activos.</td></tr>`;
+    leaderboardBody.innerHTML = `<tr><td colspan="6">Sin vendedores activos.</td></tr>`;
     return;
   }
 
@@ -292,6 +294,7 @@ function renderLeaderboard(racers) {
         <td><span class="badge"><span class="dot" style="--hue:${r.colorHue}"></span>${r.agent}</span></td>
         <td><span class="team-dot" style="background:${r.teamColor}"></span>${r.team}</td>
         <td>${formatNumber(r.count)}</td>
+        <td class="amount-green">${formatMoney(r.amount || 0)}</td>
         <td>${r.gap === 0 ? "Lider" : `−${formatNumber(r.gap)}`}</td>
       </tr>`)
     .join("");
@@ -447,8 +450,8 @@ async function loadRace(forceRefresh = false) {
   } catch (err) {
     track.innerHTML = `<div class="empty-state">${err.message}</div>`;
     leaderBanner.innerHTML = `<p class="leader-banner-label">Escuderia puntera</p><div class="leader-banner-main">Error</div><p class="leader-banner-meta">${err.message}</p>`;
-    spotlight.innerHTML = `<p class="eyebrow">Pole position</p><h2>Error</h2><p class="spotlight-copy">${err.message}</p>`;
-    leaderboardBody.innerHTML = `<tr><td colspan="5">${err.message}</td></tr>`;
+    if (spotlight) spotlight.innerHTML = `<p class="eyebrow">Pole position</p><h2>Error</h2><p class="spotlight-copy">${err.message}</p>`;
+    leaderboardBody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`;
   }
 }
 
