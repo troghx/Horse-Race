@@ -290,11 +290,11 @@ function renderLeaderboard(racers) {
   leaderboardBody.innerHTML = racers
     .map((r) => `
       <tr>
-        <td>${r.rank}</td>
-        <td><span class="badge"><span class="dot" style="--hue:${r.colorHue}"></span>${r.agent}</span></td>
-        <td><span class="team-dot" style="background:${r.teamColor}"></span>${r.team}</td>
-        <td>${formatNumber(r.count)}</td>
-        <td class="amount-green">${formatMoney(r.amount || 0)}</td>
+        <td data-label="Posicion">${r.rank}</td>
+        <td data-label="Vendedor"><span class="badge"><span class="dot" style="--hue:${r.colorHue}"></span>${r.agent}</span></td>
+        <td data-label="Equipo"><span class="team-dot" style="background:${r.teamColor}"></span>${r.team}</td>
+        <td data-label="Registros">${formatNumber(r.count)}</td>
+        <td data-label="Deuda" class="amount-green">${formatMoney(r.amount || 0)}</td>
         <td>${r.gap === 0 ? "Lider" : `−${formatNumber(r.gap)}`}</td>
       </tr>`)
     .join("");
