@@ -240,6 +240,43 @@ function renderSpotlight(race) {
     </p>`;
 }
 
+/* ══ Render: podium ══ */
+
+const podium = $("#podium");
+
+function getInitials(name) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderPodium(racers) {
+  if (racers.length < 3) {
+    podium.innerHTML = "";
+    return;
+  }
+
+  const medals = [
+    { r: racers[1], cls: "silver", label: "Plata" },
+    { r: racers[0], cls: "gold",   label: "Oro" },
+    { r: racers[2], cls: "bronze", label: "Bronce" },
+  ];
+
+  podium.innerHTML = medals.map(({ r, cls }) => `
+    <div class="podium-card podium-card--${cls}">
+      <span class="podium-rank">${r.rank}</span>
+      <div class="podium-avatar">${getInitials(r.agent)}</div>
+      <div class="podium-name">${r.agent}</div>
+      <div class="podium-team">
+        <span class="podium-team-dot" style="background:${r.teamColor}"></span>
+        ${r.team}
+      </div>
+      <div class="podium-score">${formatNumber(r.count)}</div>
+      <div class="podium-meta">${r.gap === 0 ? "Lider" : `−${r.gap} del lider`} · ${r.team}</div>
+    </div>
+  `).join("");
+}
+
 /* ══ Render: leaderboard ══ */
 
 function renderLeaderboard(racers) {
@@ -405,6 +442,7 @@ async function loadRace(forceRefresh = false) {
     renderTrack(race.racers, race.leaderCount);
     renderTeamBar(race.teamStandings);
     renderSpotlight(race);
+    renderPodium(race.racers);
     renderLeaderboard(race.racers);
   } catch (err) {
     track.innerHTML = `<div class="empty-state">${err.message}</div>`;
