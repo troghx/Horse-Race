@@ -1,0 +1,17 @@
+[build]
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  included_files = ["data/**"]
+
+[[redirects]]
+  from = "/api/race"
+  to = "/.netlify/functions/api-race"
+  status = 200
+
+[[redirects]]
+  from = "/api/teams"
+  to = "/.netlify/functions/api-teams"
+  status = 200

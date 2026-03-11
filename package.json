@@ -1,0 +1,14 @@
+{
+  "name": "sales-grand-prix",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "dev:netlify": "npx netlify dev"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.0.8"
+  }
+}

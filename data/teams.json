@@ -1,0 +1,41 @@
+{
+  "teams": {
+    "Cash Avengers": {
+      "color": "#3b82f6",
+      "supervisor": "Lelis Hernandez"
+    },
+    "Valedores": {
+      "color": "#f59e0b",
+      "supervisor": "Joel Trejo"
+    },
+    "Kill Debts": {
+      "color": "#ef4444",
+      "supervisor": "Karla Vazquez"
+    }
+  },
+  "assignments": {
+    "Daniel Lecourtoix": "Cash Avengers",
+    "Melissa Hernandez": "Cash Avengers",
+    "Axel Vazquez": "Cash Avengers",
+    "Paloma Saavedra": "Cash Avengers",
+    "Kevin Ramirez": "Cash Avengers",
+    "Sofia Martinez": "Cash Avengers",
+    "Yuridia Moreno": "Cash Avengers",
+    "Carlos Zacarias": "Valedores",
+    "Alejandra Gasca": "Valedores",
+    "Axel Silva": "Valedores",
+    "Said Avalos": "Valedores",
+    "Damariz Solis": "Valedores",
+    "Brandhon Cupul": "Valedores",
+    "Estefani Gomez": "Valedores",
+    "Ana Diaz": "Valedores",
+    "Grace Zepeda": "Kill Debts",
+    "Juan Sandoval": "Kill Debts",
+    "Teresa Fuentes": "Kill Debts",
+    "Viridiana Bandala": "Kill Debts",
+    "Ana Jimenez": "Kill Debts",
+    "Nery Lopez": "Kill Debts",
+    "Cecia Ramos": "Kill Debts",
+    "Jhasua Angeles": "Kill Debts"
+  }
+}
