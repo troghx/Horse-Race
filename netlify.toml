@@ -15,3 +15,8 @@
   from = "/api/teams"
   to = "/.netlify/functions/api-teams"
   status = 200
+
+[[redirects]]
+  from = "/api/jackpot"
+  to = "/.netlify/functions/api-jackpot"
+  status = 200

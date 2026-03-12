@@ -1,5 +1,6 @@
 node_modules/
 .netlify/
+.netlify-build/
 .claude/
 .env
 .env.*

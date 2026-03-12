@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   createFileTeamStore,
+  createJackpotPayload,
   createRacePayload,
   createTeamsPayload,
   saveTeamAssignments,
@@ -150,21 +151,12 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === "/api/jackpot") {
     try {
-      const payload = await createRacePayload({
-        period: "month",
-        anchor: null,
+      const payload = await createJackpotPayload({
         refresh: url.searchParams.get("refresh") === "1",
         teamStore,
         sheetUrl: process.env.SHEET_URL,
       });
-      const totalAmount = payload.race.racers.reduce((s, r) => s + (r.amount || 0), 0);
-      sendJson(res, 200, {
-        totalAmount,
-        goal: 9_000_000,
-        month: payload.race.anchor,
-        totalDeals: payload.race.totalEntries,
-        activeAgents: payload.race.activeAgents,
-      }, req);
+      sendJson(res, 200, payload, req);
     } catch (error) {
       sendJson(res, 500, { error: error.message });
     }
