@@ -100,7 +100,7 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 .topbar-center {
   display: flex;
   align-items: stretch;
-  justify-content: center;
+  justify-content: flex-start;
   min-width: 0;
 }
 
@@ -207,30 +207,90 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 }
 
 .topbar-right {
-  display: flex;
-  align-items: center;
-  align-self: center;
-  justify-content: flex-end;
-  gap: 0.6rem;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.topbar-controls,
-.topbar-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-rows: auto auto;
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
 }
 
 .topbar-controls {
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .topbar-actions {
+  grid-column: 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   flex-shrink: 0;
+}
+
+.topbar-period {
+  grid-column: 2 / -1;
+  grid-row: 2;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ═══ Jackpot button ═══ */
+
+.jackpot-btn {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-height: 70px;
+  padding: 0.4rem 0.6rem;
+  border-radius: 18px;
+  border: none;
+  background: var(--bg);
+  box-shadow: var(--neo-out);
+  cursor: pointer;
+  transition: box-shadow 150ms ease;
+  overflow: hidden;
+}
+
+.jackpot-btn:active { box-shadow: var(--neo-in); }
+
+.jackpot-logo {
+  height: 100%;
+  max-height: 64px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* Jackpot spin + bounce animation */
+@keyframes jackpot-spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes jackpot-bounce {
+  0%, 100% { transform: translateY(0); }
+  20%  { transform: translateY(-8px); }
+  35%  { transform: translateY(0); }
+  50%  { transform: translateY(-6px); }
+  65%  { transform: translateY(0); }
+  78%  { transform: translateY(-4px); }
+  90%  { transform: translateY(0); }
+}
+
+.jackpot-logo.is-spinning {
+  animation: jackpot-spin 0.6s ease-in-out;
+}
+
+.jackpot-logo.is-bouncing {
+  animation: jackpot-bounce 0.8s ease-in-out;
 }
 
 /* ═══ Segmented ═══ */
@@ -359,8 +419,6 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 }
 
 /* ═══ Sidebar: team cards ═══ */
-
-.sidebar-block {}
 
 .sidebar-head {
   display: flex;
@@ -689,54 +747,6 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 
 .amount-green { color: #22c55e !important; font-weight: 600; }
 
-/* ═══ Spotlight ═══ */
-
-.spotlight {
-  padding: 1.2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
-.spotlight h2 { font-size: 1.2rem; }
-
-.spotlight-team {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-  color: var(--muted);
-}
-
-.spot-dot {
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.spotlight-badge {
-  display: inline-flex;
-  align-self: flex-start;
-  padding: 0.25rem 0.55rem;
-  border-radius: 999px;
-  background: var(--bg);
-  box-shadow: var(--neo-sm);
-  color: var(--accent);
-  font-size: 0.75rem;
-  font-weight: 600;
-  margin: 0.15rem 0;
-}
-
-.spotlight-value {
-  font-family: "Outfit", sans-serif;
-  font-size: 2.4rem;
-  font-weight: 800;
-  line-height: 1;
-  margin: 0.2rem 0;
-}
-
-.spotlight-copy { color: var(--muted); font-size: 0.82rem; line-height: 1.45; }
-
 /* ═══ Podium ═══ */
 
 @property --shine-angle {
@@ -825,10 +835,6 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   order: 3;
 }
 
-.podium-rank {
-  display: none;
-}
-
 .podium-info {
   display: flex;
   flex-direction: column;
@@ -894,10 +900,6 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-}
-
-.podium-meta {
-  display: none;
 }
 
 /* ═══ Leaderboard ═══ */
@@ -1151,21 +1153,34 @@ tbody tr:hover { background: var(--hover-row); }
     height: 22px;
   }
   .topbar-right {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
     align-items: stretch;
-    flex-direction: column;
     gap: 0.5rem;
+  }
+  .jackpot-btn {
+    grid-column: 1;
+    grid-row: 1;
+    min-height: 60px;
   }
   .topbar-controls {
+    grid-column: 1;
+    grid-row: 2;
     width: 100%;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.5rem;
   }
   .topbar-actions {
+    grid-column: 1;
+    grid-row: 3;
     width: 100%;
     justify-content: flex-end;
   }
-  .segmented {
+  .topbar-period {
+    grid-column: 1;
+    grid-row: 4;
+    width: 100%;
+    justify-content: stretch;
+  }
+  .topbar-period .segmented {
     width: 100%;
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1177,6 +1192,10 @@ tbody tr:hover { background: var(--hover-row); }
   .date-input {
     width: 100%;
     min-width: 0;
+    flex: 1;
+  }
+  .jackpot-logo {
+    max-height: 44px;
   }
   .podium { flex-direction: column; gap: 0.4rem; }
   .podium-card { order: unset !important; }

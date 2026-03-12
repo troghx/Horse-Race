@@ -6,10 +6,8 @@ const state = {
 };
 
 const $ = (s) => document.querySelector(s);
-const summaryCards = $("#summaryCards");
 const rangeLabel = $("#rangeLabel");
 const track = $("#track");
-const spotlight = $("#spotlight"); // may be null if removed from DOM
 const leaderboardBody = $("#leaderboardBody");
 const anchorDateInput = $("#anchorDate");
 const refreshButton = $("#refreshButton");
@@ -37,50 +35,9 @@ themeToggle.addEventListener("click", () => {
 
 applyTheme(localStorage.getItem("theme") || "light");
 
-/* ══ Gender detection ══ */
+/* ══ Racer icon ══ */
 
-const FEMALE_NAMES = new Set([
-  "adriana","alejandra","alicia","alma","ana","andrea","angela","angelica",
-  "araceli","ariadna","beatriz","berenice","blanca","brenda","camila","carla",
-  "carmen","carolina","catalina","cecilia","cecia","celia","claudia","cristina",
-  "damariz","daniela","delia","diana","dulce","elena","elisa","elizabeth",
-  "eloisa","erica","esperanza","estela","estefani","esther","eva","evelyn",
-  "fatima","fernanda","flor","francisca","frida","gabriela","gloria","grace",
-  "graciela","griselda","guadalupe","hilda","iliana","irene","irma","isabel",
-  "ivette","ivonne","jacqueline","janet","jessica","jimena","josefina","juana",
-  "julia","juliana","karen","karla","karina","laura","leticia","lilia",
-  "liliana","lizbeth","lorena","lourdes","lucia","luisa","luz","magdalena",
-  "marcela","margarita","maria","mariana","maribel","marina","marisol",
-  "marlene","marta","martha","mercedes","michelle","minerva","miriam",
-  "monica","nadia","nancy","natalia","nayeli","nery","nora","norma","ofelia",
-  "olga","olivia","paola","patricia","paula","perla","pilar","priscila",
-  "raquel","rebeca","regina","rocio","rosa","rosalba","rosario","roxana",
-  "ruth","sandra","sara","selene","silvia","sofia","sonia","stephanie",
-  "susana","tania","teresa","valentina","valeria","vanessa","veronica",
-  "victoria","violeta","viridiana","viviana","wendy","ximena","xochitl",
-  "yolanda","yuridia","yuridi","zoila","zulema","melissa","paloma",
-]);
-
-const MALE_A = new Set(["borja","garcia","joshua","josue","nikita","luca","jhasua"]);
-
-function isFemale(fullName) {
-  const first = fullName.trim().split(/\s+/)[0].toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  if (FEMALE_NAMES.has(first)) return true;
-  if (MALE_A.has(first)) return false;
-  return first.endsWith("a");
-}
-
-/* ══ SVG icons ══ */
-
-function maleIcon(hue) {
-  return `
-    <span class="racer-avatar">
-      <img src="/avatars.png" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
-    </span>`;
-}
-
-function femaleIcon(hue) {
+function racerIcon() {
   return `
     <span class="racer-avatar">
       <img src="/avatars.png" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
@@ -95,20 +52,15 @@ function hashString(v) {
   return h;
 }
 
-function formatNumber(v) { return new Intl.NumberFormat("es-MX").format(v); }
-function formatMoney(v) { return new Intl.NumberFormat("es-MX", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v); }
+const fmtNumber = new Intl.NumberFormat("es-MX");
+const fmtMoney = new Intl.NumberFormat("es-MX", { style: "currency", currency: "USD", minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmtDate = new Intl.DateTimeFormat("es-MX", { year: "numeric", month: "short", day: "numeric", timeZone: "UTC" });
+const fmtMonthYear = new Intl.DateTimeFormat("es-MX", { year: "numeric", month: "long", timeZone: "UTC" });
 
-function formatDate(v) {
-  return new Intl.DateTimeFormat("es-MX", {
-    year: "numeric", month: "short", day: "numeric", timeZone: "UTC",
-  }).format(new Date(`${v}T00:00:00Z`));
-}
-
-function formatMonthYear(v) {
-  return new Intl.DateTimeFormat("es-MX", {
-    year: "numeric", month: "long", timeZone: "UTC",
-  }).format(new Date(`${v}T00:00:00Z`));
-}
+function formatNumber(v) { return fmtNumber.format(v); }
+function formatMoney(v) { return fmtMoney.format(v); }
+function formatDate(v) { return fmtDate.format(new Date(`${v}T00:00:00Z`)); }
+function formatMonthYear(v) { return fmtMonthYear.format(new Date(`${v}T00:00:00Z`)); }
 
 function setActivePeriod(p) {
   [...periodSwitcher.querySelectorAll("[data-period]")].forEach((b) => {
@@ -119,8 +71,6 @@ function setActivePeriod(p) {
 /* ══ Render: summary ══ */
 
 function renderSummary(meta, race) {
-  summaryCards.textContent =
-    `${formatDate(race.anchor)} · ${race.label} · ${formatNumber(race.totalEntries)} Ventas/Deals · ${formatNumber(race.activeAgents)} vendedores`;
   rangeLabel.textContent = `${formatDate(race.start)} — ${formatDate(race.end)}`;
 }
 
@@ -159,7 +109,7 @@ function renderTrack(racers, leaderCount) {
     .slice(0, 8)
     .map((r) => {
       const progress = Math.min(r.count / target, 0.88);
-      const icon = isFemale(r.agent) ? femaleIcon(r.colorHue) : maleIcon(r.colorHue);
+      const icon = racerIcon();
       const laneClass = r.rank === 1 ? "lane--gold" : r.rank === 2 ? "lane--silver" : r.rank === 3 ? "lane--bronze" : "";
       return `
         <article class="lane ${laneClass}" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || 'transparent'}">
@@ -197,36 +147,6 @@ function renderTeamBar(standings) {
       <div class="tc-meta">${t.agents} vendedores · ${t.supervisor || "—"}</div>
     </div>
   `).join("");
-}
-
-/* ══ Render: spotlight ══ */
-
-function renderSpotlight(race) {
-  if (!spotlight) return;
-  const leader = race.racers[0];
-  if (!leader) {
-    spotlight.innerHTML = `
-      <p class="eyebrow">Pole position</p>
-      <h2>Sin datos</h2>
-      <p class="spotlight-copy">No hay actividad.</p>`;
-    return;
-  }
-
-  const ru = race.racers[1];
-  const adv = ru ? leader.count - ru.count : leader.count;
-
-  spotlight.innerHTML = `
-    <p class="eyebrow">Pole position</p>
-    <h2>${leader.agent}</h2>
-    <div class="spotlight-team">
-      <span class="spot-dot" style="background:${leader.teamColor}"></span>
-      ${leader.team} · ${leader.supervisor || "—"}
-    </div>
-    <span class="spotlight-badge">#${leader.rank}</span>
-    <div class="spotlight-value">${formatNumber(leader.count)}</div>
-    <p class="spotlight-copy">
-      ${ru ? `+${formatNumber(adv)} sobre ${ru.agent}` : "Sin rival cercano"}
-    </p>`;
 }
 
 /* ══ Render: podium ══ */
@@ -406,13 +326,7 @@ teamModal.addEventListener("click", (e) => { if (e.target === teamModal) closeTe
 
 /* ══ Fetch ══ */
 
-function getFriendlyErrorMessage(error) {
-  const raw = String(error?.message || error || "").toLowerCase();
-
-  if (raw.includes("token expired") || raw.includes("internal error") || raw.includes("blobs")) {
-    return "Ups, ahorita queda joven.";
-  }
-
+function getFriendlyErrorMessage() {
   return "Ups, ahorita queda joven.";
 }
 
@@ -442,7 +356,6 @@ async function loadRace(forceRefresh = false) {
     renderLeaderBanner(race);
     renderTrack(race.racers, race.leaderCount);
     renderTeamBar(race.teamStandings);
-    renderSpotlight(race);
     renderPodium(race.racers);
     renderLeaderboard(race.racers);
   } catch (err) {
@@ -450,7 +363,6 @@ async function loadRace(forceRefresh = false) {
     console.error("Error loading race:", err);
     track.innerHTML = `<div class="empty-state">${friendlyMessage}</div>`;
     leaderBanner.innerHTML = `<p class="leader-banner-label">Escuderia puntera</p><div class="leader-banner-main">Ups</div><p class="leader-banner-meta">${friendlyMessage}</p>`;
-    if (spotlight) spotlight.innerHTML = `<p class="eyebrow">Pole position</p><h2>Ups</h2><p class="spotlight-copy">${friendlyMessage}</p>`;
     leaderboardBody.innerHTML = `<tr><td colspan="6">${friendlyMessage}</td></tr>`;
   }
 }
@@ -470,5 +382,40 @@ anchorDateInput.addEventListener("change", () => {
 });
 
 refreshButton.addEventListener("click", () => loadRace(true));
+
+/* ══ Jackpot ══ */
+
+const jackpotButton = $("#jackpotButton");
+if (jackpotButton) {
+  jackpotButton.addEventListener("click", () => {
+    window.open("/jackpot.html", "_blank");
+  });
+}
+
+/* ══ Jackpot logo animation (spin + 3 hops every 10s) ══ */
+
+(function initJackpotAnim() {
+  const logo = document.querySelector(".jackpot-logo");
+  if (!logo) return;
+
+  function runAnimation() {
+    logo.classList.add("is-spinning");
+    logo.addEventListener("animationend", function onSpin() {
+      logo.removeEventListener("animationend", onSpin);
+      logo.classList.remove("is-spinning");
+      // Force reflow before next animation
+      void logo.offsetWidth;
+      logo.classList.add("is-bouncing");
+      logo.addEventListener("animationend", function onBounce() {
+        logo.removeEventListener("animationend", onBounce);
+        logo.classList.remove("is-bouncing");
+      });
+    });
+  }
+
+  setInterval(runAnimation, 10000);
+  // First animation after a short delay
+  setTimeout(runAnimation, 2000);
+})();
 
 loadRace();

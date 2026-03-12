@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Jackpot - Grand Prix</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; }
+
+      :root {
+        --bg: #0f0f1a;
+        --bg2: #1a1a2e;
+        --text: #f0e6d2;
+        --gold: #ffd700;
+        --gold-dark: #b8860b;
+        --red-hot: #ff2020;
+        --red-glow: #ff4444;
+        --green-neon: #00ff88;
+      }
+
+      html, body { min-height: 100vh; }
+
+      body {
+        font-family: "Space Grotesk", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        overflow-x: hidden;
+        background-image:
+          radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.08) 0%, transparent 60%),
+          radial-gradient(ellipse at 50% 100%, rgba(255,32,32,0.06) 0%, transparent 50%);
+      }
+
+      h1, h2 { font-family: "Outfit", sans-serif; }
+
+      /* ── Back link ── */
+      .back-link {
+        position: fixed;
+        top: 1.5rem;
+        left: 1.5rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        color: var(--gold);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        opacity: 0.8;
+        transition: opacity 200ms;
+        z-index: 10;
+      }
+      .back-link:hover { opacity: 1; }
+      .back-link svg { width: 18px; height: 18px; }
+
+      /* ── Header ── */
+      .jp-header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      .jp-logo {
+        height: 140px;
+        margin-bottom: 0.5rem;
+        filter: drop-shadow(0 6px 30px rgba(255,215,0,0.35));
+      }
+      .jp-subtitle {
+        color: #8888aa;
+        font-size: 0.9rem;
+        margin-top: 0.1rem;
+      }
+
+      /* ── Thermometer container ── */
+      .thermo-wrap {
+        position: relative;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 0;
+        width: 100%;
+        max-width: 420px;
+      }
+
+      /* ── Tick marks on the left ── */
+      .thermo-ticks {
+        position: relative;
+        display: flex;
+        flex-direction: column-reverse;
+        justify-content: space-between;
+        height: 480px;
+        padding-bottom: 46px;
+        padding-top: 14px;
+        margin-right: -6px;
+        z-index: 3;
+      }
+
+      .tick {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        font-family: "Outfit", sans-serif;
+        font-weight: 700;
+        font-size: 0.82rem;
+        color: #556;
+        transition: color 600ms, text-shadow 600ms;
+      }
+      .tick.is-reached {
+        color: var(--gold);
+        text-shadow: 0 0 12px rgba(255,215,0,0.4);
+      }
+      .tick-line {
+        width: 18px;
+        height: 2px;
+        background: #333;
+        border-radius: 2px;
+        transition: background 600ms;
+      }
+      .tick.is-reached .tick-line {
+        background: var(--gold-dark);
+      }
+
+      /* ── Tube ── */
+      .thermo-tube {
+        position: relative;
+        width: 72px;
+        height: 480px;
+        z-index: 2;
+      }
+
+      .tube-bg {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 52px;
+        height: 100%;
+        border-radius: 30px 30px 0 0;
+        background: var(--bg2);
+        border: 3px solid #2a2a44;
+        box-shadow:
+          inset 0 0 20px rgba(0,0,0,0.5),
+          0 0 30px rgba(0,0,0,0.3);
+        overflow: hidden;
+      }
+
+      .tube-fill {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        height: 0%;
+        background: linear-gradient(0deg,
+          #ff2020 0%,
+          #ff4422 30%,
+          #ff6644 60%,
+          #ff8833 80%,
+          #ffaa22 95%,
+          #ffd700 100%
+        );
+        border-radius: 26px 26px 0 0;
+        transition: height 2s cubic-bezier(0.22, 0.61, 0.36, 1);
+        box-shadow:
+          0 0 20px rgba(255,32,32,0.4),
+          inset 0 0 15px rgba(255,255,255,0.1);
+      }
+
+      .tube-fill::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 8px;
+        width: 8px;
+        height: 60%;
+        background: linear-gradient(180deg, rgba(255,255,255,0.35), transparent);
+        border-radius: 8px;
+      }
+
+      /* Bubbles */
+      .tube-fill .bubble {
+        position: absolute;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        animation: bubble-rise 3s ease-in infinite;
+      }
+
+      @keyframes bubble-rise {
+        0%   { transform: translateY(0) scale(1); opacity: 0.6; }
+        100% { transform: translateY(-120px) scale(0.3); opacity: 0; }
+      }
+
+      /* Glow ring at top of fill */
+      .tube-glow {
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--red-glow);
+        filter: blur(8px);
+        opacity: 0.6;
+        transition: bottom 2s cubic-bezier(0.22, 0.61, 0.36, 1);
+      }
+
+      /* ── Bulb ── */
+      .thermo-bulb {
+        position: absolute;
+        bottom: -42px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 90px;
+        height: 90px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 38% 38%, #ff6644, #cc1100 70%);
+        border: 3px solid #2a2a44;
+        box-shadow:
+          0 0 40px rgba(255,32,32,0.5),
+          0 0 80px rgba(255,32,32,0.2),
+          inset 0 0 20px rgba(0,0,0,0.3);
+        z-index: 3;
+      }
+
+      .thermo-bulb::after {
+        content: "";
+        position: absolute;
+        top: 14px;
+        left: 18px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.45), transparent 70%);
+      }
+
+      /* ── Current amount display ── */
+      .amount-display {
+        text-align: center;
+        margin-top: 3.5rem;
+      }
+
+      .amount-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.15em;
+        color: #8888aa;
+        font-weight: 600;
+      }
+
+      .amount-value {
+        font-family: "Outfit", sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        line-height: 1.1;
+        background: linear-gradient(180deg, #fff 0%, #ffd700 50%, #ff8c00 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        transition: all 500ms;
+      }
+
+      .amount-pct {
+        font-family: "Outfit", sans-serif;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--green-neon);
+        margin-top: 0.2rem;
+      }
+
+      .amount-meta {
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: #666;
+      }
+
+      /* ── Goal crown ── */
+      .goal-crown {
+        position: absolute;
+        top: -36px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 2rem;
+        filter: drop-shadow(0 2px 8px rgba(255,215,0,0.5));
+        z-index: 4;
+      }
+
+      .goal-tag {
+        position: absolute;
+        top: -8px;
+        right: -70px;
+        background: linear-gradient(135deg, #ffd700, #b8860b);
+        color: #1a1a2e;
+        font-family: "Outfit", sans-serif;
+        font-weight: 800;
+        font-size: 0.82rem;
+        padding: 0.3rem 0.7rem;
+        border-radius: 8px;
+        white-space: nowrap;
+        box-shadow: 0 4px 16px rgba(255,215,0,0.3);
+        z-index: 4;
+      }
+
+      /* ── Confetti (hidden until goal) ── */
+      .confetti-container {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 100;
+        overflow: hidden;
+        display: none;
+      }
+      .confetti-container.is-active { display: block; }
+
+      .confetti {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        top: -20px;
+        animation: confetti-fall 3s linear infinite;
+      }
+
+      @keyframes confetti-fall {
+        0%   { transform: translateY(-10px) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+      }
+
+      /* ── Pulse animation when near goal ── */
+      @keyframes pulse-glow {
+        0%, 100% { box-shadow: 0 0 40px rgba(255,32,32,0.5), 0 0 80px rgba(255,32,32,0.2); }
+        50%      { box-shadow: 0 0 60px rgba(255,215,0,0.7), 0 0 120px rgba(255,215,0,0.3); }
+      }
+
+      .thermo-bulb.is-hot {
+        animation: pulse-glow 1.5s ease-in-out infinite;
+      }
+
+      /* ── Responsive ── */
+      @media (max-width: 480px) {
+        .jp-logo { height: 100px; }
+        .thermo-tube { height: 380px; }
+        .thermo-ticks { height: 380px; }
+        .tick { font-size: 0.72rem; }
+        .amount-value { font-size: 2.2rem; }
+        .goal-tag { right: -55px; font-size: 0.72rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <a href="/" class="back-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Grand Prix
+    </a>
+
+    <div class="jp-header">
+      <img src="/Jackpotlogo.png" alt="Jackpot" class="jp-logo" />
+      <p class="jp-subtitle" id="jpMonth">Cargando...</p>
+    </div>
+
+    <div class="thermo-wrap">
+      <div class="thermo-ticks" id="thermoTicks"></div>
+
+      <div class="thermo-tube">
+        <div class="goal-crown">&#128081;</div>
+        <div class="goal-tag">$9,000,000</div>
+        <div class="tube-bg">
+          <div class="tube-fill" id="tubeFill">
+            <span class="bubble" style="left:12px;bottom:10%;width:6px;height:6px;animation-delay:0s"></span>
+            <span class="bubble" style="left:28px;bottom:20%;width:4px;height:4px;animation-delay:0.8s"></span>
+            <span class="bubble" style="left:18px;bottom:5%;width:5px;height:5px;animation-delay:1.6s"></span>
+          </div>
+        </div>
+        <div class="tube-glow" id="tubeGlow"></div>
+        <div class="thermo-bulb" id="thermoBulb"></div>
+      </div>
+    </div>
+
+    <div class="amount-display">
+      <p class="amount-label">Acumulado del mes</p>
+      <p class="amount-value" id="amountValue">$0</p>
+      <p class="amount-pct" id="amountPct">0%</p>
+      <p class="amount-meta" id="amountMeta"></p>
+    </div>
+
+    <div class="confetti-container" id="confetti"></div>
+
+    <script>
+      const GOAL = 9_000_000;
+      const STEPS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000];
+
+      const tubeFill = document.getElementById("tubeFill");
+      const tubeGlow = document.getElementById("tubeGlow");
+      const thermoBulb = document.getElementById("thermoBulb");
+      const amountValue = document.getElementById("amountValue");
+      const amountPct = document.getElementById("amountPct");
+      const amountMeta = document.getElementById("amountMeta");
+      const jpMonth = document.getElementById("jpMonth");
+      const thermoTicks = document.getElementById("thermoTicks");
+      const confettiEl = document.getElementById("confetti");
+
+      function formatMoney(v) {
+        return new Intl.NumberFormat("es-MX", {
+          style: "currency", currency: "USD",
+          minimumFractionDigits: 0, maximumFractionDigits: 0,
+        }).format(v);
+      }
+
+      function formatMonthYear(v) {
+        return new Intl.DateTimeFormat("es-MX", {
+          year: "numeric", month: "long", timeZone: "UTC",
+        }).format(new Date(v + "T00:00:00Z"));
+      }
+
+      // Build tick marks
+      function buildTicks() {
+        thermoTicks.innerHTML = STEPS.map((s) =>
+          `<div class="tick" data-step="${s}">
+            <span>$${s / 1_000_000}M</span>
+            <span class="tick-line"></span>
+          </div>`
+        ).join("");
+      }
+
+      function updateTicks(amount) {
+        thermoTicks.querySelectorAll(".tick").forEach((tick) => {
+          const step = Number(tick.dataset.step);
+          tick.classList.toggle("is-reached", amount >= step);
+        });
+      }
+
+      function launchConfetti() {
+        confettiEl.classList.add("is-active");
+        const colors = ["#ffd700", "#ff2020", "#00ff88", "#ff44aa", "#44aaff", "#ffaa00"];
+        for (let i = 0; i < 80; i++) {
+          const c = document.createElement("div");
+          c.className = "confetti";
+          c.style.left = Math.random() * 100 + "%";
+          c.style.background = colors[Math.floor(Math.random() * colors.length)];
+          c.style.animationDelay = Math.random() * 3 + "s";
+          c.style.animationDuration = (2 + Math.random() * 2) + "s";
+          c.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+          c.style.width = (6 + Math.random() * 8) + "px";
+          c.style.height = (6 + Math.random() * 8) + "px";
+          confettiEl.appendChild(c);
+        }
+      }
+
+      // Animate the counter
+      function animateCount(target, duration = 2000) {
+        const start = performance.now();
+        function tick(now) {
+          const elapsed = now - start;
+          const progress = Math.min(elapsed / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.round(target * eased);
+          amountValue.textContent = formatMoney(current);
+          if (progress < 1) requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+
+      async function loadJackpot() {
+        try {
+          const res = await fetch("/api/jackpot");
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error);
+
+          const { totalAmount, goal, month, totalDeals, activeAgents } = data;
+          const pct = Math.min(totalAmount / goal, 1);
+
+          jpMonth.textContent = formatMonthYear(month);
+          amountPct.textContent = (pct * 100).toFixed(1) + "% del Jackpot";
+          amountMeta.textContent = `${totalDeals} ventas/deals · ${activeAgents} vendedores`;
+
+          // Fill thermometer with delay for visual effect
+          setTimeout(() => {
+            tubeFill.style.height = (pct * 100) + "%";
+            tubeGlow.style.bottom = `calc(${pct * 100}% - 6px)`;
+          }, 300);
+
+          updateTicks(totalAmount);
+          animateCount(totalAmount);
+
+          if (pct >= 0.85) thermoBulb.classList.add("is-hot");
+          if (pct >= 1) launchConfetti();
+        } catch (err) {
+          console.error("Error loading jackpot:", err);
+          jpMonth.textContent = "Error al cargar datos";
+        }
+      }
+
+      // Theme from main page
+      const theme = localStorage.getItem("theme") || "light";
+      // Jackpot always dark for drama
+
+      buildTicks();
+      loadJackpot();
+
+      // Auto refresh every 60s
+      setInterval(loadJackpot, 60_000);
+    </script>
+  </body>
+</html>

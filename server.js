@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
+import { createGzip } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -29,12 +30,28 @@ const mimeTypes = {
 
 const teamStore = createFileTeamStore(teamsFile);
 
-function sendJson(res, status, body) {
-  res.writeHead(status, {
-    "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store",
-  });
-  res.end(JSON.stringify(body));
+const COMPRESSIBLE = new Set([".html", ".css", ".js", ".json", ".svg"]);
+
+function sendJson(res, status, body, req) {
+  const json = JSON.stringify(body);
+  const acceptGzip = req && String(req.headers["accept-encoding"] || "").includes("gzip");
+
+  if (acceptGzip && json.length > 1024) {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Encoding": "gzip",
+      "Cache-Control": "no-store",
+    });
+    const gz = createGzip();
+    gz.pipe(res);
+    gz.end(json);
+  } else {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(json);
+  }
 }
 
 function getBody(req) {
@@ -46,7 +63,7 @@ function getBody(req) {
   });
 }
 
-async function handleApiRace(url, res) {
+async function handleApiRace(url, req, res) {
   try {
     const payload = await createRacePayload({
       period: url.searchParams.get("period"),
@@ -56,20 +73,20 @@ async function handleApiRace(url, res) {
       sheetUrl: process.env.SHEET_URL,
     });
 
-    sendJson(res, 200, payload);
+    sendJson(res, 200, payload, req);
   } catch (error) {
     sendJson(res, 500, { error: error.message });
   }
 }
 
-async function handleTeamsGet(res) {
+async function handleTeamsGet(req, res) {
   try {
     const payload = await createTeamsPayload({
       teamStore,
       sheetUrl: process.env.SHEET_URL,
     });
 
-    sendJson(res, 200, payload);
+    sendJson(res, 200, payload, req);
   } catch (error) {
     sendJson(res, 500, { error: error.message });
   }
@@ -90,7 +107,7 @@ async function handleTeamsPost(req, res) {
   }
 }
 
-async function serveStatic(filePath, res) {
+async function serveStatic(filePath, req, res) {
   try {
     const resolved = path.join(publicDir, filePath === "/" ? "index.html" : filePath);
     const safe = path.normalize(resolved);
@@ -102,11 +119,24 @@ async function serveStatic(filePath, res) {
 
     const ext = path.extname(safe);
     const content = await readFile(safe);
-    res.writeHead(200, {
-      "Content-Type": mimeTypes[ext] || "application/octet-stream",
-      "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
-    });
-    res.end(content);
+    const acceptGzip = String(req.headers["accept-encoding"] || "").includes("gzip");
+
+    if (acceptGzip && COMPRESSIBLE.has(ext) && content.length > 1024) {
+      res.writeHead(200, {
+        "Content-Type": mimeTypes[ext] || "application/octet-stream",
+        "Content-Encoding": "gzip",
+        "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
+      });
+      const gz = createGzip();
+      gz.pipe(res);
+      gz.end(content);
+    } else {
+      res.writeHead(200, {
+        "Content-Type": mimeTypes[ext] || "application/octet-stream",
+        "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
+      });
+      res.end(content);
+    }
   } catch {
     res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
     res.end("Not found");
@@ -116,14 +146,40 @@ async function serveStatic(filePath, res) {
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  if (url.pathname === "/api/race") return handleApiRace(url, res);
+  if (url.pathname === "/api/race") return handleApiRace(url, req, res);
 
-  if (url.pathname === "/api/teams") {
-    return req.method === "POST" ? handleTeamsPost(req, res) : handleTeamsGet(res);
+  if (url.pathname === "/api/jackpot") {
+    try {
+      const payload = await createRacePayload({
+        period: "month",
+        anchor: null,
+        refresh: url.searchParams.get("refresh") === "1",
+        teamStore,
+        sheetUrl: process.env.SHEET_URL,
+      });
+      const totalAmount = payload.race.racers.reduce((s, r) => s + (r.amount || 0), 0);
+      sendJson(res, 200, {
+        totalAmount,
+        goal: 9_000_000,
+        month: payload.race.anchor,
+        totalDeals: payload.race.totalEntries,
+        activeAgents: payload.race.activeAgents,
+      }, req);
+    } catch (error) {
+      sendJson(res, 500, { error: error.message });
+    }
+    return;
   }
 
-  await serveStatic(url.pathname === "/" ? "/" : decodeURIComponent(url.pathname), res);
+  if (url.pathname === "/api/teams") {
+    return req.method === "POST" ? handleTeamsPost(req, res) : handleTeamsGet(req, res);
+  }
+
+  await serveStatic(url.pathname === "/" ? "/" : decodeURIComponent(url.pathname), req, res);
 });
+
+// Pre-warm: fetch sheet data on startup so first request is instant
+createRacePayload({ period: "day", teamStore, sheetUrl: process.env.SHEET_URL }).catch(() => {});
 
 server.listen(PORT, () => {
   console.log(`Sales Grand Prix listening on http://localhost:${PORT}`);
