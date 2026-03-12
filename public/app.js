@@ -74,32 +74,17 @@ function isFemale(fullName) {
 /* ══ SVG icons ══ */
 
 function maleIcon(hue) {
-  const s = `hsl(${hue} 50% 42%)`;
-  const f = `hsl(${hue} 55% 72%)`;
-  return `<svg viewBox="0 0 36 40" class="racer-icon" fill="none">
-    <circle cx="18" cy="11" r="5.5" fill="${f}" stroke="${s}" stroke-width="1.6"/>
-    <path d="M7 38c0-7.5 6-12 11-12s11 4.5 11 12" fill="${f}" stroke="${s}" stroke-width="1.6"/>
-    <path d="M9.5 11c0-6.5 17-6.5 17 0" stroke="${s}" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <rect x="7" y="9" width="3.2" height="4.8" rx="1.6" fill="${s}"/>
-    <rect x="25.8" y="9" width="3.2" height="4.8" rx="1.6" fill="${s}"/>
-    <path d="M7.2 13.8v2.5c0 .8.8 1.2 1.6 1.2h2.5" stroke="${s}" stroke-width="1.4" stroke-linecap="round"/>
-  </svg>`;
+  return `
+    <span class="racer-avatar">
+      <img src="/avatars.png" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
+    </span>`;
 }
 
 function femaleIcon(hue) {
-  const s = `hsl(${hue} 50% 42%)`;
-  const f = `hsl(${hue} 55% 72%)`;
-  const h = `hsl(${hue} 35% 32%)`;
-  return `<svg viewBox="0 0 36 40" class="racer-icon" fill="none">
-    <path d="M12.5 6c-2.5.5-4 4-3.8 8.5l.3 4" stroke="${h}" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="M23.5 6c2.5.5 4 4 3.8 8.5l-.3 4" stroke="${h}" stroke-width="2.8" stroke-linecap="round"/>
-    <circle cx="18" cy="11" r="5.5" fill="${f}" stroke="${s}" stroke-width="1.6"/>
-    <path d="M7 38c0-7.5 6-12 11-12s11 4.5 11 12" fill="${f}" stroke="${s}" stroke-width="1.6"/>
-    <path d="M9.5 11c0-6.5 17-6.5 17 0" stroke="${s}" stroke-width="2" fill="none" stroke-linecap="round"/>
-    <rect x="7" y="9" width="3.2" height="4.8" rx="1.6" fill="${s}"/>
-    <rect x="25.8" y="9" width="3.2" height="4.8" rx="1.6" fill="${s}"/>
-    <path d="M7.2 13.8v2.5c0 .8.8 1.2 1.6 1.2h2.5" stroke="${s}" stroke-width="1.4" stroke-linecap="round"/>
-  </svg>`;
+  return `
+    <span class="racer-avatar">
+      <img src="/avatars.png" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
+    </span>`;
 }
 
 /* ══ Helpers ══ */
@@ -421,6 +406,16 @@ teamModal.addEventListener("click", (e) => { if (e.target === teamModal) closeTe
 
 /* ══ Fetch ══ */
 
+function getFriendlyErrorMessage(error) {
+  const raw = String(error?.message || error || "").toLowerCase();
+
+  if (raw.includes("token expired") || raw.includes("internal error") || raw.includes("blobs")) {
+    return "Ups, ahorita queda joven.";
+  }
+
+  return "Ups, ahorita queda joven.";
+}
+
 async function loadRace(forceRefresh = false) {
   const params = new URLSearchParams({ period: state.period });
   if (state.anchorDate) params.set("anchor", state.anchorDate);
@@ -451,10 +446,12 @@ async function loadRace(forceRefresh = false) {
     renderPodium(race.racers);
     renderLeaderboard(race.racers);
   } catch (err) {
-    track.innerHTML = `<div class="empty-state">${err.message}</div>`;
-    leaderBanner.innerHTML = `<p class="leader-banner-label">Escuderia puntera</p><div class="leader-banner-main">Error</div><p class="leader-banner-meta">${err.message}</p>`;
-    if (spotlight) spotlight.innerHTML = `<p class="eyebrow">Pole position</p><h2>Error</h2><p class="spotlight-copy">${err.message}</p>`;
-    leaderboardBody.innerHTML = `<tr><td colspan="6">${err.message}</td></tr>`;
+    const friendlyMessage = getFriendlyErrorMessage(err);
+    console.error("Error loading race:", err);
+    track.innerHTML = `<div class="empty-state">${friendlyMessage}</div>`;
+    leaderBanner.innerHTML = `<p class="leader-banner-label">Escuderia puntera</p><div class="leader-banner-main">Ups</div><p class="leader-banner-meta">${friendlyMessage}</p>`;
+    if (spotlight) spotlight.innerHTML = `<p class="eyebrow">Pole position</p><h2>Ups</h2><p class="spotlight-copy">${friendlyMessage}</p>`;
+    leaderboardBody.innerHTML = `<tr><td colspan="6">${friendlyMessage}</td></tr>`;
   }
 }
 
