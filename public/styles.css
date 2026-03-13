@@ -269,7 +269,7 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   object-fit: contain;
 }
 
-/* Jackpot spin + bounce animation */
+/* Jackpot spin + bounce + dance animation */
 @keyframes jackpot-spin {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
@@ -285,12 +285,29 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   90%  { transform: translateY(0); }
 }
 
+@keyframes jackpot-dance {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+  10%  { transform: translateY(-3px) rotate(-2deg) scale(1.02); }
+  20%  { transform: translateY(0) rotate(0deg) scale(1); }
+  30%  { transform: translateY(-2px) rotate(2.5deg) scale(1.01); }
+  40%  { transform: translateY(1px) rotate(0deg) scale(1); }
+  50%  { transform: translateY(-4px) rotate(-1.5deg) scale(1.03); }
+  60%  { transform: translateY(0) rotate(1deg) scale(1); }
+  70%  { transform: translateY(-2px) rotate(-2deg) scale(1.02); }
+  80%  { transform: translateY(1px) rotate(0.5deg) scale(1); }
+  90%  { transform: translateY(-1px) rotate(-1deg) scale(1.01); }
+}
+
 .jackpot-logo.is-spinning {
   animation: jackpot-spin 0.6s ease-in-out;
 }
 
 .jackpot-logo.is-bouncing {
   animation: jackpot-bounce 0.8s ease-in-out;
+}
+
+.jackpot-logo.is-dancing {
+  animation: jackpot-dance 2.5s ease-in-out infinite;
 }
 
 /* ═══ Segmented ═══ */
@@ -689,11 +706,11 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
 .racer-avatar::before {
   content: "";
   position: absolute;
-  inset: 12% 16% 10%;
+  inset: 8% 12% 6%;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--team-color, #ffffff) 68%, transparent);
-  filter: blur(10px);
-  opacity: 0.22;
+  background: var(--team-color, #ffffff);
+  filter: blur(12px);
+  opacity: 0.45;
   z-index: 0;
   pointer-events: none;
 }
@@ -702,8 +719,9 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   content: "";
   position: absolute;
   inset: 0;
-  background: color-mix(in srgb, var(--team-color, #ffffff) 72%, white);
-  opacity: 0.42;
+  background: var(--team-color, #ffffff);
+  opacity: 0.55;
+  mix-blend-mode: color;
   z-index: 2;
   pointer-events: none;
   -webkit-mask-image: url("/avatars.png");
@@ -722,12 +740,13 @@ h1, h2 { font-family: "Outfit", sans-serif; font-weight: 700; }
   object-fit: contain;
   object-position: center center;
   filter:
-    drop-shadow(1px 2px 3px rgba(0,0,0,0.15))
-    saturate(0.94)
-    brightness(1.04);
+    drop-shadow(1px 2px 3px rgba(0,0,0,0.18))
+    saturate(1.15)
+    brightness(1.06)
+    contrast(1.05);
 }
 
-.racer:hover .racer-icon {
+.racer:hover .racer-avatar {
   animation: wiggle 500ms ease;
 }
 

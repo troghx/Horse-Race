@@ -392,30 +392,40 @@ if (jackpotButton) {
   });
 }
 
-/* ══ Jackpot logo animation (spin + 3 hops every 10s) ══ */
+/* ══ Jackpot logo animation (spin + bounce → dance loop) ══ */
 
 (function initJackpotAnim() {
   const logo = document.querySelector(".jackpot-logo");
   if (!logo) return;
 
-  function runAnimation() {
+  function startDance() {
+    logo.classList.remove("is-spinning", "is-bouncing");
+    void logo.offsetWidth;
+    logo.classList.add("is-dancing");
+  }
+
+  function runBurst() {
+    logo.classList.remove("is-dancing");
+    void logo.offsetWidth;
     logo.classList.add("is-spinning");
     logo.addEventListener("animationend", function onSpin() {
       logo.removeEventListener("animationend", onSpin);
       logo.classList.remove("is-spinning");
-      // Force reflow before next animation
       void logo.offsetWidth;
       logo.classList.add("is-bouncing");
       logo.addEventListener("animationend", function onBounce() {
         logo.removeEventListener("animationend", onBounce);
         logo.classList.remove("is-bouncing");
+        void logo.offsetWidth;
+        startDance();
       });
     });
   }
 
-  setInterval(runAnimation, 10000);
-  // First animation after a short delay
-  setTimeout(runAnimation, 2000);
+  // Start dancing right away, burst every 12s
+  setTimeout(startDance, 500);
+  setInterval(runBurst, 12000);
+  setTimeout(runBurst, 3000);
 })();
 
 loadRace();

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jackpot - Grand Prix</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" sizes="any" />
+    <link rel="icon" href="/favicon.png" type="image/png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -72,6 +72,114 @@
         height: 140px;
         margin-bottom: 0.5rem;
         filter: drop-shadow(0 6px 30px rgba(255,215,0,0.35));
+        animation: jp-dance 2.5s ease-in-out infinite;
+      }
+
+      @keyframes jp-dance {
+        0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+        10%  { transform: translateY(-4px) rotate(-2deg) scale(1.02); }
+        20%  { transform: translateY(0) rotate(0deg) scale(1); }
+        30%  { transform: translateY(-3px) rotate(2.5deg) scale(1.01); }
+        40%  { transform: translateY(1px) rotate(0deg) scale(1); }
+        50%  { transform: translateY(-5px) rotate(-1.5deg) scale(1.03); }
+        60%  { transform: translateY(0) rotate(1deg) scale(1); }
+        70%  { transform: translateY(-3px) rotate(-2deg) scale(1.02); }
+        80%  { transform: translateY(1px) rotate(0.5deg) scale(1); }
+        90%  { transform: translateY(-2px) rotate(-1deg) scale(1.01); }
+      }
+
+      /* ── Falling coins ── */
+      .coins-container {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        z-index: 0;
+        overflow: hidden;
+        -webkit-mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%);
+        mask-image: linear-gradient(to bottom, black 0%, black 55%, transparent 92%);
+      }
+
+      /* Moneda cayendo */
+      .coin {
+        position: absolute;
+        top: -60px;
+        width: var(--coin-size, 36px);
+        height: var(--coin-size, 36px);
+        animation: coin-fall var(--coin-duration, 6s) linear infinite;
+        animation-delay: var(--coin-delay, 0s);
+      }
+
+      /* Contenedor de los 3 frames apilados */
+      .coin-frames {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        filter: drop-shadow(0 2px 8px rgba(255,215,0,0.45));
+      }
+
+      .coin-frame {
+        position: absolute;
+        inset: 0;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        opacity: 0;
+        animation: none;
+      }
+
+      .coin-f1 {
+        background-image: url("/monedafront.png");
+        animation: frame-front var(--coin-spin-dur, 1.6s) steps(1) infinite;
+        animation-delay: var(--coin-delay, 0s);
+      }
+      .coin-f2 {
+        background-image: url("/monedafinal.png");
+        animation: frame-quarter var(--coin-spin-dur, 1.6s) steps(1) infinite;
+        animation-delay: var(--coin-delay, 0s);
+      }
+      .coin-f3 {
+        background-image: url("/monedaside.png");
+        animation: frame-side var(--coin-spin-dur, 1.6s) steps(1) infinite;
+        animation-delay: var(--coin-delay, 0s);
+      }
+
+      /* Secuencia: front(0-30%) → 3/4(30-45%) → side(45-55%) → 3/4 flip(55-70%) → front(70-100%) */
+      @keyframes frame-front {
+        0%   { opacity: 1; }
+        30%  { opacity: 1; }
+        30.01% { opacity: 0; }
+        70%  { opacity: 0; }
+        70.01% { opacity: 1; }
+        100% { opacity: 1; }
+      }
+
+      @keyframes frame-quarter {
+        0%   { opacity: 0; }
+        30%  { opacity: 0; }
+        30.01% { opacity: 1; transform: scaleX(1); }
+        45%  { opacity: 1; transform: scaleX(1); }
+        45.01% { opacity: 0; }
+        55%  { opacity: 0; }
+        55.01% { opacity: 1; transform: scaleX(-1); }
+        70%  { opacity: 1; transform: scaleX(-1); }
+        70.01% { opacity: 0; }
+        100% { opacity: 0; }
+      }
+
+      @keyframes frame-side {
+        0%   { opacity: 0; }
+        45%  { opacity: 0; }
+        45.01% { opacity: 1; }
+        55%  { opacity: 1; }
+        55.01% { opacity: 0; }
+        100% { opacity: 0; }
+      }
+
+      @keyframes coin-fall {
+        0%   { transform: translateY(-60px) rotateZ(0deg); opacity: 0; }
+        4%   { opacity: 0.9; }
+        82%  { opacity: 0.9; }
+        100% { transform: translateY(105vh) rotateZ(var(--coin-wobble, 20deg)); opacity: 0; }
       }
       .jp-subtitle {
         color: #8888aa;
@@ -159,18 +267,22 @@
         width: 100%;
         height: 0%;
         background: linear-gradient(0deg,
-          #ff2020 0%,
-          #ff4422 30%,
-          #ff6644 60%,
-          #ff8833 80%,
-          #ffaa22 95%,
+          #4fc3f7 0%,
+          #29b6f6 8%,
+          #7c4dff 20%,
+          #e040fb 32%,
+          #ff4081 44%,
+          #ff1744 56%,
+          #ff5722 68%,
+          #ff9100 78%,
+          #ffab00 88%,
           #ffd700 100%
         );
         border-radius: 26px 26px 0 0;
         transition: height 2s cubic-bezier(0.22, 0.61, 0.36, 1);
         box-shadow:
           0 0 20px rgba(255,32,32,0.4),
-          inset 0 0 15px rgba(255,255,255,0.1);
+          inset 0 0 15px rgba(255,255,255,0.15);
       }
 
       .tube-fill::after {
@@ -206,10 +318,10 @@
         width: 60px;
         height: 12px;
         border-radius: 50%;
-        background: var(--red-glow);
+        background: #4fc3f7;
         filter: blur(8px);
         opacity: 0.6;
-        transition: bottom 2s cubic-bezier(0.22, 0.61, 0.36, 1);
+        transition: bottom 2s cubic-bezier(0.22, 0.61, 0.36, 1), background 2s;
       }
 
       /* ── Bulb ── */
@@ -221,13 +333,29 @@
         width: 90px;
         height: 90px;
         border-radius: 50%;
-        background: radial-gradient(circle at 38% 38%, #ff6644, #cc1100 70%);
+        background: radial-gradient(circle at 38% 38%, #64b5f6, #1565c0 70%);
         border: 3px solid #2a2a44;
         box-shadow:
-          0 0 40px rgba(255,32,32,0.5),
-          0 0 80px rgba(255,32,32,0.2),
+          0 0 40px rgba(79,195,247,0.5),
+          0 0 80px rgba(79,195,247,0.2),
           inset 0 0 20px rgba(0,0,0,0.3);
         z-index: 3;
+        transition: background 2s, box-shadow 2s;
+      }
+
+      .thermo-bulb.is-warm {
+        background: radial-gradient(circle at 38% 38%, #e040fb, #9c27b0 70%);
+        box-shadow: 0 0 40px rgba(224,64,251,0.5), 0 0 80px rgba(224,64,251,0.2), inset 0 0 20px rgba(0,0,0,0.3);
+      }
+      .thermo-bulb.is-hot {
+        background: radial-gradient(circle at 38% 38%, #ff6644, #cc1100 70%);
+        box-shadow: 0 0 40px rgba(255,32,32,0.5), 0 0 80px rgba(255,32,32,0.2), inset 0 0 20px rgba(0,0,0,0.3);
+        animation: pulse-glow 1.5s ease-in-out infinite;
+      }
+      .thermo-bulb.is-fire {
+        background: radial-gradient(circle at 38% 38%, #ffd700, #ff8c00 70%);
+        box-shadow: 0 0 50px rgba(255,215,0,0.6), 0 0 100px rgba(255,215,0,0.3), inset 0 0 20px rgba(0,0,0,0.3);
+        animation: pulse-glow 1s ease-in-out infinite;
       }
 
       .thermo-bulb::after {
@@ -243,8 +371,9 @@
 
       /* ── Current amount display ── */
       .amount-display {
+        position: relative;
         text-align: center;
-        margin-top: 3.5rem;
+        margin-top: 0.5rem;
       }
 
       .amount-label {
@@ -257,7 +386,7 @@
 
       .amount-value {
         font-family: "Outfit", sans-serif;
-        font-size: 3rem;
+        font-size: 3.8rem;
         font-weight: 800;
         line-height: 1.1;
         background: linear-gradient(180deg, #fff 0%, #ffd700 50%, #ff8c00 100%);
@@ -281,31 +410,25 @@
         color: #666;
       }
 
-      /* ── Goal crown ── */
-      .goal-crown {
+      /* ── Pet mascot sitting ON the USD amount text ── */
+      .goal-pet {
         position: absolute;
-        top: -36px;
         left: 50%;
         transform: translateX(-50%);
-        font-size: 2rem;
-        filter: drop-shadow(0 2px 8px rgba(255,215,0,0.5));
-        z-index: 4;
+        bottom: calc(100% - 2.2rem);
+        width: 140px;
+        height: auto;
+        z-index: 5;
+        filter: drop-shadow(0 4px 16px rgba(255,215,0,0.5));
+        animation: pet-idle 2s ease-in-out infinite;
+        pointer-events: none;
       }
 
-      .goal-tag {
-        position: absolute;
-        top: -8px;
-        right: -70px;
-        background: linear-gradient(135deg, #ffd700, #b8860b);
-        color: #1a1a2e;
-        font-family: "Outfit", sans-serif;
-        font-weight: 800;
-        font-size: 0.82rem;
-        padding: 0.3rem 0.7rem;
-        border-radius: 8px;
-        white-space: nowrap;
-        box-shadow: 0 4px 16px rgba(255,215,0,0.3);
-        z-index: 4;
+      @keyframes pet-idle {
+        0%, 100% { transform: translateY(0) rotate(0deg); }
+        25%  { transform: translateY(-4px) rotate(-2deg); }
+        50%  { transform: translateY(-1px) rotate(1deg); }
+        75%  { transform: translateY(-5px) rotate(-1deg); }
       }
 
       /* ── Confetti (hidden until goal) ── */
@@ -349,11 +472,13 @@
         .thermo-ticks { height: 380px; }
         .tick { font-size: 0.72rem; }
         .amount-value { font-size: 2.2rem; }
-        .goal-tag { right: -55px; font-size: 0.72rem; }
+        .goal-pet { width: 100px; }
       }
     </style>
   </head>
   <body>
+    <div class="coins-container" id="coinsContainer"></div>
+
     <a href="/" class="back-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       Grand Prix
@@ -361,15 +486,12 @@
 
     <div class="jp-header">
       <img src="/Jackpotlogo.png" alt="Jackpot" class="jp-logo" />
-      <p class="jp-subtitle" id="jpMonth">Cargando...</p>
     </div>
 
     <div class="thermo-wrap">
       <div class="thermo-ticks" id="thermoTicks"></div>
 
       <div class="thermo-tube">
-        <div class="goal-crown">&#128081;</div>
-        <div class="goal-tag">$9,000,000</div>
         <div class="tube-bg">
           <div class="tube-fill" id="tubeFill">
             <span class="bubble" style="left:12px;bottom:10%;width:6px;height:6px;animation-delay:0s"></span>
@@ -383,6 +505,7 @@
     </div>
 
     <div class="amount-display">
+      <img src="/cdpet.png" alt="CD Pet" class="goal-pet" />
       <p class="amount-label">Acumulado del mes</p>
       <p class="amount-value" id="amountValue">$0</p>
       <p class="amount-pct" id="amountPct">0%</p>
@@ -401,7 +524,7 @@
       const amountValue = document.getElementById("amountValue");
       const amountPct = document.getElementById("amountPct");
       const amountMeta = document.getElementById("amountMeta");
-      const jpMonth = document.getElementById("jpMonth");
+      const jpMonth = document.getElementById("jpMonth"); // may be null
       const thermoTicks = document.getElementById("thermoTicks");
       const confettiEl = document.getElementById("confetti");
 
@@ -475,7 +598,7 @@
           const { totalAmount, goal, month, totalDeals, activeAgents } = data;
           const pct = Math.min(totalAmount / goal, 1);
 
-          jpMonth.textContent = formatMonthYear(month);
+          if (jpMonth) jpMonth.textContent = formatMonthYear(month);
           amountPct.textContent = (pct * 100).toFixed(1) + "% del Jackpot";
           amountMeta.textContent = `${totalDeals} ventas/deals · ${activeAgents} vendedores`;
 
@@ -483,16 +606,30 @@
           setTimeout(() => {
             tubeFill.style.height = (pct * 100) + "%";
             tubeGlow.style.bottom = `calc(${pct * 100}% - 6px)`;
+            // Glow color matches fill level
+            if (pct >= 0.9) tubeGlow.style.background = "#ffd700";
+            else if (pct >= 0.7) tubeGlow.style.background = "#ff9100";
+            else if (pct >= 0.5) tubeGlow.style.background = "#ff1744";
+            else if (pct >= 0.3) tubeGlow.style.background = "#e040fb";
+            else tubeGlow.style.background = "#4fc3f7";
           }, 300);
 
           updateTicks(totalAmount);
           animateCount(totalAmount);
 
-          if (pct >= 0.85) thermoBulb.classList.add("is-hot");
+          // Bulb color stages
+          thermoBulb.classList.remove("is-warm", "is-hot", "is-fire");
+          if (pct >= 0.9) thermoBulb.classList.add("is-fire");
+          else if (pct >= 0.6) thermoBulb.classList.add("is-hot");
+          else if (pct >= 0.3) thermoBulb.classList.add("is-warm");
+
+          // Dynamic coins — more coins as percentage rises
+          updateCoinCount(pct);
+
           if (pct >= 1) launchConfetti();
         } catch (err) {
           console.error("Error loading jackpot:", err);
-          jpMonth.textContent = "Error al cargar datos";
+          if (jpMonth) jpMonth.textContent = "Error al cargar datos";
         }
       }
 
@@ -505,6 +642,46 @@
 
       // Auto refresh every 60s
       setInterval(loadJackpot, 60_000);
+
+      // ── Falling coins (dynamic based on jackpot %) ──
+      const coinsContainer = document.getElementById("coinsContainer");
+      let currentCoinCount = 0;
+
+      function createCoin() {
+        const coin = document.createElement("div");
+        coin.className = "coin";
+        const size = 32 + Math.random() * 28;
+        coin.style.setProperty("--coin-size", size + "px");
+        coin.style.setProperty("--coin-duration", (6 + Math.random() * 7) + "s");
+        coin.style.setProperty("--coin-delay", (Math.random() * 10) + "s");
+        coin.style.setProperty("--coin-wobble", (8 + Math.random() * 25) + "deg");
+        coin.style.setProperty("--coin-spin-dur", (1.2 + Math.random() * 1.4) + "s");
+        coin.style.left = (Math.random() * 94 + 3) + "%";
+        coin.innerHTML = `
+          <div class="coin-frames">
+            <div class="coin-frame coin-f1"></div>
+            <div class="coin-frame coin-f2"></div>
+            <div class="coin-frame coin-f3"></div>
+          </div>`;
+        return coin;
+      }
+
+      function updateCoinCount(pct) {
+        // 0% → 5 coins, 50% → 18, 100% → 40
+        const target = Math.round(5 + pct * 35);
+        while (currentCoinCount < target) {
+          coinsContainer.appendChild(createCoin());
+          currentCoinCount++;
+        }
+        // Remove excess if somehow pct went down
+        while (currentCoinCount > target && coinsContainer.lastChild) {
+          coinsContainer.removeChild(coinsContainer.lastChild);
+          currentCoinCount--;
+        }
+      }
+
+      // Start with a minimum
+      updateCoinCount(0);
     </script>
   </body>
 </html>
