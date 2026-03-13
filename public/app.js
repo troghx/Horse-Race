@@ -23,9 +23,10 @@ const editTeamsBtn = $("#editTeamsBtn");
 const prizeModeButton = $("#prizeModeButton");
 const TEAM_EDITOR_PIN = "75572144";
 const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
+const PRIZE_SLOTS = new Set(["gold", "silver", "bronze"]);
 const prizeState = {
   active: false,
-  editorAgent: "",
+  editorSlot: "",
   draftAmount: "",
   awards: {},
   podiumRacers: [],
@@ -83,8 +84,8 @@ function loadPrizeAwards() {
     const raw = JSON.parse(localStorage.getItem(PRIZE_AWARDS_KEY) || "{}");
     return Object.fromEntries(
       Object.entries(raw)
-        .map(([agent, amount]) => [agent, Number(amount)])
-        .filter(([agent, amount]) => agent && Number.isFinite(amount) && amount > 0),
+        .map(([slot, amount]) => [slot, Number(amount)])
+        .filter(([slot, amount]) => PRIZE_SLOTS.has(slot) && Number.isFinite(amount) && amount > 0),
     );
   } catch {
     return {};
@@ -95,16 +96,13 @@ function savePrizeAwards() {
   localStorage.setItem(PRIZE_AWARDS_KEY, JSON.stringify(prizeState.awards));
 }
 
-function encodePrizeAgent(agent) {
-  return encodeURIComponent(agent);
+function encodePrizeSlot(slot) {
+  return encodeURIComponent(slot);
 }
 
-function decodePrizeAgent(agent) {
-  try {
-    return decodeURIComponent(agent);
-  } catch {
-    return agent;
-  }
+function decodePrizeSlot(slot) {
+  const decoded = decodeURIComponent(slot || "");
+  return PRIZE_SLOTS.has(decoded) ? decoded : "";
 }
 
 function normalizePrizeAmount(value) {
@@ -126,7 +124,7 @@ function syncPrizeModeButton() {
 function setPrizeMode(active) {
   prizeState.active = active;
   if (!active) {
-    prizeState.editorAgent = "";
+    prizeState.editorSlot = "";
     prizeState.draftAmount = "";
   }
   syncPrizeModeButton();
@@ -239,9 +237,9 @@ function renderPodium(racers) {
   ];
 
   podium.innerHTML = medals.map(({ r, cls }) => {
-    const prizeKey = encodePrizeAgent(r.agent);
-    const savedPrize = prizeState.awards[r.agent];
-    const isEditing = prizeState.active && prizeState.editorAgent === r.agent;
+    const prizeKey = encodePrizeSlot(cls);
+    const savedPrize = prizeState.awards[cls];
+    const isEditing = prizeState.active && prizeState.editorSlot === cls;
     const hasPrize = Boolean(savedPrize || isEditing);
     const draftValue = isEditing ? prizeState.draftAmount : savedPrize ? String(savedPrize) : "";
 
@@ -251,10 +249,10 @@ function renderPodium(racers) {
           <div class="podium-prize-editor">
             <input class="prize-input" type="text" inputmode="numeric" placeholder="Monto MXN" value="${draftValue}" data-prize-input="${prizeKey}" />
             <div class="podium-prize-actions">
-              <button class="prize-confirm-btn" type="button" data-prize-confirm="${prizeKey}">Confirmar premio</button>
-              <button class="prize-cancel-btn" type="button" data-prize-cancel="${prizeKey}">Cancelar</button>
-            </div>
+            <button class="prize-confirm-btn" type="button" data-prize-confirm="${prizeKey}">Confirmar premio</button>
+            <button class="prize-cancel-btn" type="button" data-prize-cancel="${prizeKey}">Cancelar</button>
           </div>
+        </div>
         </div>
       `
       : savedPrize
@@ -464,8 +462,8 @@ if (podium) {
   podium.addEventListener("click", (e) => {
     const openBtn = e.target.closest("[data-prize-open]");
     if (openBtn) {
-      prizeState.editorAgent = decodePrizeAgent(openBtn.dataset.prizeOpen);
-      prizeState.draftAmount = String(prizeState.awards[prizeState.editorAgent] || "");
+      prizeState.editorSlot = decodePrizeSlot(openBtn.dataset.prizeOpen);
+      prizeState.draftAmount = String(prizeState.awards[prizeState.editorSlot] || "");
       renderPodium(prizeState.podiumRacers);
       requestAnimationFrame(() => {
         podium.querySelector(`[data-prize-input="${openBtn.dataset.prizeOpen}"]`)?.focus();
@@ -475,8 +473,8 @@ if (podium) {
 
     const editBtn = e.target.closest("[data-prize-edit]");
     if (editBtn) {
-      prizeState.editorAgent = decodePrizeAgent(editBtn.dataset.prizeEdit);
-      prizeState.draftAmount = String(prizeState.awards[prizeState.editorAgent] || "");
+      prizeState.editorSlot = decodePrizeSlot(editBtn.dataset.prizeEdit);
+      prizeState.draftAmount = String(prizeState.awards[prizeState.editorSlot] || "");
       renderPodium(prizeState.podiumRacers);
       requestAnimationFrame(() => {
         podium.querySelector(`[data-prize-input="${editBtn.dataset.prizeEdit}"]`)?.focus();
@@ -486,11 +484,12 @@ if (podium) {
 
     const clearBtn = e.target.closest("[data-prize-clear]");
     if (clearBtn) {
-      const agent = decodePrizeAgent(clearBtn.dataset.prizeClear);
-      delete prizeState.awards[agent];
+      const slot = decodePrizeSlot(clearBtn.dataset.prizeClear);
+      if (!slot) return;
+      delete prizeState.awards[slot];
       savePrizeAwards();
-      if (prizeState.editorAgent === agent) {
-        prizeState.editorAgent = "";
+      if (prizeState.editorSlot === slot) {
+        prizeState.editorSlot = "";
         prizeState.draftAmount = "";
       }
       renderPodium(prizeState.podiumRacers);
@@ -499,7 +498,7 @@ if (podium) {
 
     const cancelBtn = e.target.closest("[data-prize-cancel]");
     if (cancelBtn) {
-      prizeState.editorAgent = "";
+      prizeState.editorSlot = "";
       prizeState.draftAmount = "";
       renderPodium(prizeState.podiumRacers);
       return;
@@ -508,7 +507,8 @@ if (podium) {
     const confirmBtn = e.target.closest("[data-prize-confirm]");
     if (confirmBtn) {
       const prizeKey = confirmBtn.dataset.prizeConfirm;
-      const agent = decodePrizeAgent(prizeKey);
+      const slot = decodePrizeSlot(prizeKey);
+      if (!slot) return;
       const input = podium.querySelector(`[data-prize-input="${prizeKey}"]`);
       const amount = normalizePrizeAmount(input?.value || prizeState.draftAmount);
       if (!amount) {
@@ -516,9 +516,9 @@ if (podium) {
         input?.focus();
         return;
       }
-      prizeState.awards[agent] = amount;
+      prizeState.awards[slot] = amount;
       savePrizeAwards();
-      prizeState.editorAgent = "";
+      prizeState.editorSlot = "";
       prizeState.draftAmount = "";
       renderPodium(prizeState.podiumRacers);
     }
