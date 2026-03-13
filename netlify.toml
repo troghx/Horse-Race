@@ -20,3 +20,8 @@
   from = "/api/jackpot"
   to = "/.netlify/functions/api-jackpot"
   status = 200
+
+[[redirects]]
+  from = "/api/tug-stakes"
+  to = "/.netlify/functions/api-tug-stakes"
+  status = 200

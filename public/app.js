@@ -20,7 +20,16 @@ const teamEditor = $("#teamEditor");
 const closeModalBtn = $("#closeModal");
 const saveTeamsBtn = $("#saveTeams");
 const editTeamsBtn = $("#editTeamsBtn");
+const prizeModeButton = $("#prizeModeButton");
 const TEAM_EDITOR_PIN = "75572144";
+const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
+const prizeState = {
+  active: false,
+  editorAgent: "",
+  draftAmount: "",
+  awards: {},
+  podiumRacers: [],
+};
 
 /* ══ Theme ══ */
 
@@ -37,10 +46,17 @@ applyTheme(localStorage.getItem("theme") || "light");
 
 /* ══ Racer icon ══ */
 
-function racerIcon() {
+const MALE_AVATARS = ["/avatar-hombre-0.png", "/avatar-hombre-1.png", "/avatar-hombre-2.png"];
+const FEMALE_AVATARS = ["/avatar-mujer-0.png", "/avatar-mujer-1.png"];
+
+function racerIcon(agent, gender) {
+  let src = "/avatars.png";
+  if (gender === "m") src = MALE_AVATARS[hashString(agent) % MALE_AVATARS.length];
+  else if (gender === "f") src = FEMALE_AVATARS[hashString(agent) % FEMALE_AVATARS.length];
+
   return `
-    <span class="racer-avatar">
-      <img src="/avatars.png" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
+    <span class="racer-avatar" style="--avatar-url:url('${src}')">
+      <img src="${src}" class="racer-icon racer-icon--avatar" alt="" draggable="false" />
     </span>`;
 }
 
@@ -61,6 +77,61 @@ function formatNumber(v) { return fmtNumber.format(v); }
 function formatMoney(v) { return fmtMoney.format(v); }
 function formatDate(v) { return fmtDate.format(new Date(`${v}T00:00:00Z`)); }
 function formatMonthYear(v) { return fmtMonthYear.format(new Date(`${v}T00:00:00Z`)); }
+
+function loadPrizeAwards() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(PRIZE_AWARDS_KEY) || "{}");
+    return Object.fromEntries(
+      Object.entries(raw)
+        .map(([agent, amount]) => [agent, Number(amount)])
+        .filter(([agent, amount]) => agent && Number.isFinite(amount) && amount > 0),
+    );
+  } catch {
+    return {};
+  }
+}
+
+function savePrizeAwards() {
+  localStorage.setItem(PRIZE_AWARDS_KEY, JSON.stringify(prizeState.awards));
+}
+
+function encodePrizeAgent(agent) {
+  return encodeURIComponent(agent);
+}
+
+function decodePrizeAgent(agent) {
+  try {
+    return decodeURIComponent(agent);
+  } catch {
+    return agent;
+  }
+}
+
+function normalizePrizeAmount(value) {
+  const digits = String(value || "").replace(/[^\d]/g, "");
+  const amount = Number(digits);
+  return Number.isFinite(amount) && amount > 0 ? Math.round(amount) : 0;
+}
+
+function formatPrizeAmount(amount) {
+  return `+${formatNumber(amount)} MXN`;
+}
+
+function syncPrizeModeButton() {
+  if (!prizeModeButton) return;
+  prizeModeButton.classList.toggle("is-active", prizeState.active);
+  prizeModeButton.setAttribute("aria-pressed", String(prizeState.active));
+}
+
+function setPrizeMode(active) {
+  prizeState.active = active;
+  if (!active) {
+    prizeState.editorAgent = "";
+    prizeState.draftAmount = "";
+  }
+  syncPrizeModeButton();
+  renderPodium(prizeState.podiumRacers);
+}
 
 function setActivePeriod(p) {
   [...periodSwitcher.querySelectorAll("[data-period]")].forEach((b) => {
@@ -109,7 +180,7 @@ function renderTrack(racers, leaderCount) {
     .slice(0, 8)
     .map((r) => {
       const progress = Math.min(r.count / target, 0.88);
-      const icon = racerIcon();
+      const icon = racerIcon(r.agent, r.gender);
       const laneClass = r.rank === 1 ? "lane--gold" : r.rank === 2 ? "lane--silver" : r.rank === 3 ? "lane--bronze" : "";
       return `
         <article class="lane ${laneClass}" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || 'transparent'}">
@@ -154,6 +225,8 @@ function renderTeamBar(standings) {
 const podium = $("#podium");
 
 function renderPodium(racers) {
+  prizeState.podiumRacers = racers.slice(0, 3);
+
   if (racers.length < 3) {
     podium.innerHTML = "";
     return;
@@ -165,18 +238,55 @@ function renderPodium(racers) {
     { r: racers[2], cls: "bronze", label: "Bronce" },
   ];
 
-  podium.innerHTML = medals.map(({ r, cls }) => `
-    <div class="podium-card podium-card--${cls}">
-      <div class="podium-info">
-        <div class="podium-name">${r.agent}</div>
-        <div class="podium-team">
-          <span class="podium-team-dot" style="background:${r.teamColor}"></span>
-          ${r.team}
+  podium.innerHTML = medals.map(({ r, cls }) => {
+    const prizeKey = encodePrizeAgent(r.agent);
+    const savedPrize = prizeState.awards[r.agent];
+    const isEditing = prizeState.active && prizeState.editorAgent === r.agent;
+    const draftValue = isEditing ? prizeState.draftAmount : savedPrize ? String(savedPrize) : "";
+
+    const prizeMarkup = prizeState.active && isEditing
+      ? `
+        <div class="podium-prize-zone">
+          <div class="podium-prize-editor">
+            <input class="prize-input" type="text" inputmode="numeric" placeholder="Monto MXN" value="${draftValue}" data-prize-input="${prizeKey}" />
+            <div class="podium-prize-actions">
+              <button class="prize-confirm-btn" type="button" data-prize-confirm="${prizeKey}">Confirmar premio</button>
+              <button class="prize-cancel-btn" type="button" data-prize-cancel="${prizeKey}">Cancelar</button>
+            </div>
+          </div>
         </div>
+      `
+      : savedPrize
+        ? `
+          <div class="podium-prize-zone podium-prize-has-award">
+            <button class="podium-prize-display ${prizeState.active ? "is-editable" : ""}" ${prizeState.active ? `type="button" data-prize-open="${prizeKey}"` : 'type="button" disabled'}>
+              <span class="podium-prize-amount">${formatPrizeAmount(savedPrize)}</span>
+            </button>
+            ${prizeState.active ? `<button class="podium-prize-clear" type="button" data-prize-clear="${prizeKey}" title="Quitar premio">Quitar</button>` : ""}
+          </div>
+        `
+        : prizeState.active
+          ? `
+            <div class="podium-prize-zone">
+              <button class="podium-prize-slot" type="button" data-prize-open="${prizeKey}" title="Agregar premio"></button>
+            </div>
+          `
+          : "";
+
+    return `
+      <div class="podium-card podium-card--${cls}">
+        <div class="podium-info">
+          <div class="podium-name">${r.agent}</div>
+          <div class="podium-team">
+            <span class="podium-team-dot" style="background:${r.teamColor}"></span>
+            ${r.team}
+          </div>
+        </div>
+        ${prizeMarkup}
+        <div class="podium-score">${formatNumber(r.count)}</div>
       </div>
-      <div class="podium-score">${formatNumber(r.count)}</div>
-    </div>
-  `).join("");
+    `;
+  }).join("");
 }
 
 /* ══ Render: leaderboard ══ */
@@ -204,6 +314,7 @@ function renderLeaderboard(racers) {
 
 let editorTeams = {};
 let editorAssignments = {};
+prizeState.awards = loadPrizeAwards();
 
 async function openTeamEditor() {
   const pin = window.prompt("Ingresa el PIN para editar equipos");
@@ -323,6 +434,99 @@ editTeamsBtn.addEventListener("click", openTeamEditor);
 closeModalBtn.addEventListener("click", closeTeamEditor);
 saveTeamsBtn.addEventListener("click", saveTeamAssignments);
 teamModal.addEventListener("click", (e) => { if (e.target === teamModal) closeTeamEditor(); });
+
+async function togglePrizeMode() {
+  if (prizeState.active) {
+    setPrizeMode(false);
+    return;
+  }
+
+  const pin = window.prompt("Ingresa el PIN para activar prize mode");
+  if (pin === null) return;
+
+  if (pin.trim() !== TEAM_EDITOR_PIN) {
+    window.alert("PIN incorrecto");
+    return;
+  }
+
+  setPrizeMode(true);
+}
+
+if (prizeModeButton) {
+  prizeModeButton.addEventListener("click", togglePrizeMode);
+  syncPrizeModeButton();
+}
+
+if (podium) {
+  podium.addEventListener("click", (e) => {
+    const openBtn = e.target.closest("[data-prize-open]");
+    if (openBtn) {
+      prizeState.editorAgent = decodePrizeAgent(openBtn.dataset.prizeOpen);
+      prizeState.draftAmount = String(prizeState.awards[prizeState.editorAgent] || "");
+      renderPodium(prizeState.podiumRacers);
+      requestAnimationFrame(() => {
+        podium.querySelector(`[data-prize-input="${openBtn.dataset.prizeOpen}"]`)?.focus();
+      });
+      return;
+    }
+
+    const editBtn = e.target.closest("[data-prize-edit]");
+    if (editBtn) {
+      prizeState.editorAgent = decodePrizeAgent(editBtn.dataset.prizeEdit);
+      prizeState.draftAmount = String(prizeState.awards[prizeState.editorAgent] || "");
+      renderPodium(prizeState.podiumRacers);
+      requestAnimationFrame(() => {
+        podium.querySelector(`[data-prize-input="${editBtn.dataset.prizeEdit}"]`)?.focus();
+      });
+      return;
+    }
+
+    const clearBtn = e.target.closest("[data-prize-clear]");
+    if (clearBtn) {
+      const agent = decodePrizeAgent(clearBtn.dataset.prizeClear);
+      delete prizeState.awards[agent];
+      savePrizeAwards();
+      if (prizeState.editorAgent === agent) {
+        prizeState.editorAgent = "";
+        prizeState.draftAmount = "";
+      }
+      renderPodium(prizeState.podiumRacers);
+      return;
+    }
+
+    const cancelBtn = e.target.closest("[data-prize-cancel]");
+    if (cancelBtn) {
+      prizeState.editorAgent = "";
+      prizeState.draftAmount = "";
+      renderPodium(prizeState.podiumRacers);
+      return;
+    }
+
+    const confirmBtn = e.target.closest("[data-prize-confirm]");
+    if (confirmBtn) {
+      const prizeKey = confirmBtn.dataset.prizeConfirm;
+      const agent = decodePrizeAgent(prizeKey);
+      const input = podium.querySelector(`[data-prize-input="${prizeKey}"]`);
+      const amount = normalizePrizeAmount(input?.value || prizeState.draftAmount);
+      if (!amount) {
+        window.alert("Ingresa un monto valido para el premio");
+        input?.focus();
+        return;
+      }
+      prizeState.awards[agent] = amount;
+      savePrizeAwards();
+      prizeState.editorAgent = "";
+      prizeState.draftAmount = "";
+      renderPodium(prizeState.podiumRacers);
+    }
+  });
+
+  podium.addEventListener("input", (e) => {
+    const input = e.target.closest("[data-prize-input]");
+    if (!input) return;
+    prizeState.draftAmount = input.value;
+  });
+}
 
 /* ══ Fetch ══ */
 

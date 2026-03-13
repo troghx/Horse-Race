@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260313-prize-mode-2" />
   </head>
   <body>
     <main class="shell">
@@ -21,7 +21,9 @@
         <div class="topbar-left">
           <div class="brand-lockup">
             <div class="brand-title-row">
-              <img src="/cd-logo.png" alt="Logo" class="brand-logo" />
+              <button class="brand-logo-btn" id="prizeModeButton" type="button" title="Activar prize mode" aria-pressed="false">
+                <img src="/cd-logo.png" alt="Activar prize mode" class="brand-logo" />
+              </button>
               <h1>Grand Prix</h1>
               <div class="trophy-badge" aria-hidden="true">
                 <svg class="trophy-icon" viewBox="0 0 64 64" fill="none">
@@ -150,6 +152,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=20260313-prize-mode-2"></script>
   </body>
 </html>

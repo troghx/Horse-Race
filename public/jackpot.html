@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bungee&family=Outfit:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <style>
@@ -20,26 +20,369 @@
         --text: #f0e6d2;
         --gold: #ffd700;
         --gold-dark: #b8860b;
+        --thermo-blue: #00b7ff;
+        --thermo-cyan: #00e7ff;
+        --thermo-violet: #5b4dff;
+        --thermo-magenta: #ff00a8;
+        --thermo-orange: #ff8a00;
+        --thermo-red: #ff2a2a;
+        --thermo-red-deep: #ff003c;
+        --tube-height: 480px;
+        --stage-width: 760px;
+        --stage-height: 980px;
+        --stage-scale: 1;
         --red-hot: #ff2020;
         --red-glow: #ff4444;
         --green-neon: #00ff88;
+        --event-blue: #22b8ff;
+        --event-blue-deep: #007dff;
+        --event-pink: #ff54c8;
+        --event-pink-deep: #ff1f92;
+        --event-panel: rgba(8, 10, 22, 0.72);
+        --event-line: rgba(255,255,255,0.14);
       }
 
       html, body { min-height: 100vh; }
+
+      html {
+        scrollbar-width: none;
+      }
+
+      body {
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      html::-webkit-scrollbar,
+      body::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+      }
 
       body {
         font-family: "Space Grotesk", sans-serif;
         background: var(--bg);
         color: var(--text);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 2rem 1rem;
+        padding: 0;
         overflow-x: hidden;
         background-image:
           radial-gradient(ellipse at 50% 0%, rgba(255,215,0,0.08) 0%, transparent 60%),
           radial-gradient(ellipse at 50% 100%, rgba(255,32,32,0.06) 0%, transparent 50%);
+      }
+
+      .jackpot-page {
+        position: relative;
+        z-index: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: linear-gradient(180deg, transparent 0%, transparent 40%, #020204 62%);
+      }
+
+      .hero-panel {
+        position: relative;
+        width: 100%;
+        min-height: calc(100vh + 120px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem 1rem 8rem;
+        overflow: hidden;
+      }
+
+      .hero-panel::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: -1px;
+        height: clamp(180px, 22vh, 300px);
+        pointer-events: none;
+        background: linear-gradient(180deg, transparent 0%, rgba(2,2,4,0.4) 60%, rgba(2,2,4,0.8) 100%);
+        z-index: 0;
+      }
+
+      .jackpot-stage-shell {
+        width: 100%;
+        height: calc(var(--stage-height) * var(--stage-scale));
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 1rem;
+      }
+
+      .jackpot-stage {
+        width: var(--stage-width);
+        transform: scale(var(--stage-scale));
+        transform-origin: top center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .event-kicker {
+        font-size: 0.78rem;
+        letter-spacing: 0.34em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.58);
+      }
+
+      .reveal {
+        opacity: 0;
+        transform: translateY(64px) scale(0.985);
+        transition:
+          opacity 850ms cubic-bezier(0.22, 0.61, 0.36, 1),
+          transform 850ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        will-change: opacity, transform;
+      }
+
+      .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+
+      .event-video-section {
+        position: relative;
+        width: 100%;
+        min-height: 115vh;
+        margin-top: clamp(-120px, -10vh, -72px);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 50% 12%, rgba(34,184,255,0.16), transparent 28%),
+          radial-gradient(circle at 50% 30%, rgba(255,84,200,0.14), transparent 34%),
+          #020204;
+      }
+
+      .event-video {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: center center;
+        opacity: 0.72;
+        filter: saturate(1.08) contrast(1.05) brightness(0.66);
+      }
+
+      .event-video-section::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        background:
+          linear-gradient(180deg, rgba(2,2,4,0) 0%, rgba(2,2,4,0.03) 10%, rgba(2,2,4,0.14) 20%, rgba(2,2,4,0.12) 36%, rgba(2,2,4,0.26) 68%, rgba(2,2,4,0.86) 92%, #020204 100%),
+          linear-gradient(90deg, rgba(2,2,4,0.55) 0%, rgba(2,2,4,0.08) 28%, rgba(2,2,4,0.08) 72%, rgba(2,2,4,0.55) 100%);
+      }
+
+      .event-video-section::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: clamp(320px, 38vh, 520px);
+        z-index: 2;
+        pointer-events: none;
+        background: linear-gradient(180deg, #020204 0%, rgba(2,2,4,0.82) 18%, rgba(2,2,4,0.5) 40%, rgba(2,2,4,0.18) 65%, transparent 100%);
+      }
+
+      .event-content {
+        position: relative;
+        z-index: 2;
+        width: min(100%, 1240px);
+        min-height: 115vh;
+        padding: clamp(260px, 32vh, 390px) 1.5rem 7.5rem;
+        display: grid;
+        align-content: start;
+        gap: 1.4rem;
+      }
+
+      .battle-hero {
+        display: grid;
+        gap: 1rem;
+        align-content: start;
+      }
+
+      .battle-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.6rem 1rem;
+        font-family: "Bungee", "Outfit", sans-serif;
+        font-size: clamp(2.8rem, 8vw, 7rem);
+        line-height: 0.92;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        text-shadow: 0 14px 35px rgba(0,0,0,0.42);
+      }
+
+      .battle-title .boys {
+        color: var(--event-blue);
+        text-shadow: 0 0 24px rgba(34,184,255,0.42), 0 14px 28px rgba(0,0,0,0.38);
+      }
+
+      .battle-title .vs {
+        font-size: 0.48em;
+        color: rgba(255,255,255,0.92);
+        transform: translateY(-0.08em);
+      }
+
+      .battle-title .girls {
+        color: var(--event-pink);
+        text-shadow: 0 0 24px rgba(255,84,200,0.42), 0 14px 28px rgba(0,0,0,0.38);
+      }
+
+      .battle-copy {
+        max-width: 34rem;
+        font-size: clamp(1rem, 1.4vw, 1.15rem);
+        line-height: 1.6;
+        color: rgba(240,230,210,0.82);
+      }
+
+      .battle-board {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+        width: min(100%, 760px);
+        align-self: start;
+      }
+
+      .battle-team {
+        padding: 1.15rem 1.2rem 1.2rem;
+        border-radius: 24px;
+        background: var(--event-panel);
+        backdrop-filter: blur(18px);
+        border: 1px solid transparent;
+        box-shadow: none;
+        display: grid;
+        gap: 0.9rem;
+      }
+
+      .battle-team-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 1rem;
+      }
+
+      .battle-name {
+        font-family: "Outfit", sans-serif;
+        font-size: clamp(1.15rem, 2vw, 1.7rem);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .battle-team--boys .battle-name,
+      .battle-team--boys .battle-pct {
+        color: var(--event-blue);
+      }
+
+      .battle-team--girls .battle-name,
+      .battle-team--girls .battle-pct {
+        color: var(--event-pink);
+      }
+
+      .battle-pct {
+        font-family: "Outfit", sans-serif;
+        font-size: clamp(1.45rem, 2.6vw, 2.3rem);
+        font-weight: 800;
+        line-height: 1;
+      }
+
+      .battle-bar {
+        position: relative;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.1);
+        overflow: hidden;
+      }
+
+      .battle-bar span {
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 0;
+        border-radius: inherit;
+        transition: width 900ms cubic-bezier(0.22, 0.61, 0.36, 1);
+      }
+
+      .battle-team--boys .battle-bar span {
+        background: linear-gradient(90deg, var(--event-blue-deep), var(--event-blue));
+        box-shadow: 0 0 24px rgba(34,184,255,0.45);
+      }
+
+      .battle-team--girls .battle-bar span {
+        background: linear-gradient(90deg, var(--event-pink-deep), var(--event-pink));
+        box-shadow: 0 0 24px rgba(255,84,200,0.45);
+      }
+
+      .battle-hint {
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.62);
+      }
+
+      /* ── Edit stakes button ── */
+      .tow-edit-btn {
+        position: fixed;
+        bottom: 1.8rem;
+        right: 1.8rem;
+        z-index: 20;
+        display: none;
+        place-items: center;
+        width: 44px;
+        height: 44px;
+        border: none;
+        background: none;
+        color: rgba(255,255,255,0.5);
+        cursor: pointer;
+        transition: color 180ms ease;
+      }
+
+      .tow-edit-btn.is-visible { display: grid; }
+      .tow-edit-btn:hover { color: #fff; }
+      .tow-edit-btn.is-editing { color: var(--event-blue); }
+
+      .battle-copy[contenteditable="true"] {
+        outline: none;
+        border: 1px solid rgba(34,184,255,0.4);
+        border-radius: 12px;
+        padding: 0.6rem 0.9rem;
+        background: rgba(34,184,255,0.06);
+        min-height: 2.4em;
+      }
+
+      .battle-copy[contenteditable="true"]:focus {
+        border-color: var(--event-blue);
+        box-shadow: 0 0 0 3px rgba(34,184,255,0.15);
+      }
+
+      .battle-copy:empty { display: none; }
+      .battle-copy[contenteditable="true"]:empty {
+        display: block;
+      }
+      .battle-copy[contenteditable="true"]:empty::before {
+        content: "Describe qué está en juego...";
+        color: rgba(255,255,255,0.32);
+        pointer-events: none;
+      }
+
+      .event-footer {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 2;
+        width: 100%;
+        padding: 0 1.5rem 1.5rem;
+        text-align: center;
+        font-size: 0.78rem;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.42);
       }
 
       h1, h2 { font-family: "Outfit", sans-serif; }
@@ -69,7 +412,7 @@
         margin-bottom: 2rem;
       }
       .jp-logo {
-        height: 140px;
+        height: 180px;
         margin-bottom: 0.5rem;
         filter: drop-shadow(0 6px 30px rgba(255,215,0,0.35));
         animation: jp-dance 2.5s ease-in-out infinite;
@@ -196,6 +539,7 @@
         gap: 0;
         width: 100%;
         max-width: 420px;
+        padding-bottom: 58px;
       }
 
       /* ── Tick marks on the left ── */
@@ -204,7 +548,7 @@
         display: flex;
         flex-direction: column-reverse;
         justify-content: space-between;
-        height: 480px;
+        height: var(--tube-height);
         padding-bottom: 46px;
         padding-top: 14px;
         margin-right: -6px;
@@ -240,7 +584,7 @@
       .thermo-tube {
         position: relative;
         width: 72px;
-        height: 480px;
+        height: var(--tube-height);
         z-index: 2;
       }
 
@@ -267,21 +611,28 @@
         width: 100%;
         height: 0%;
         background: linear-gradient(0deg,
-          #4fc3f7 0%,
-          #29b6f6 8%,
-          #7c4dff 20%,
-          #e040fb 32%,
-          #ff4081 44%,
-          #ff1744 56%,
-          #ff5722 68%,
-          #ff9100 78%,
-          #ffab00 88%,
-          #ffd700 100%
+          var(--thermo-blue) 0%,
+          #10c6ff 10%,
+          var(--thermo-cyan) 20%,
+          #24b7ff 28%,
+          #3b96ff 34%,
+          #516eff 39%,
+          var(--thermo-violet) 45%,
+          #8d39ff 54%,
+          var(--thermo-magenta) 61%,
+          #ff4d8b 66%,
+          var(--thermo-orange) 70%,
+          #ff5a36 74%,
+          var(--thermo-red) 80%,
+          var(--thermo-red-deep) 100%
         );
+        background-size: 100% var(--tube-height);
+        background-position: center bottom;
+        background-repeat: no-repeat;
         border-radius: 26px 26px 0 0;
         transition: height 2s cubic-bezier(0.22, 0.61, 0.36, 1);
         box-shadow:
-          0 0 20px rgba(255,32,32,0.4),
+          0 0 22px rgba(0,183,255,0.45),
           inset 0 0 15px rgba(255,255,255,0.15);
       }
 
@@ -318,7 +669,7 @@
         width: 60px;
         height: 12px;
         border-radius: 50%;
-        background: #4fc3f7;
+        background: var(--thermo-blue);
         filter: blur(8px);
         opacity: 0.6;
         transition: bottom 2s cubic-bezier(0.22, 0.61, 0.36, 1), background 2s;
@@ -344,18 +695,18 @@
       }
 
       .thermo-bulb.is-warm {
-        background: radial-gradient(circle at 38% 38%, #e040fb, #9c27b0 70%);
-        box-shadow: 0 0 40px rgba(224,64,251,0.5), 0 0 80px rgba(224,64,251,0.2), inset 0 0 20px rgba(0,0,0,0.3);
+        background: radial-gradient(circle at 38% 38%, var(--thermo-cyan), var(--thermo-violet) 72%);
+        box-shadow: 0 0 40px rgba(0,231,255,0.42), 0 0 80px rgba(91,77,255,0.22), inset 0 0 20px rgba(0,0,0,0.3);
       }
       .thermo-bulb.is-hot {
-        background: radial-gradient(circle at 38% 38%, #ff6644, #cc1100 70%);
-        box-shadow: 0 0 40px rgba(255,32,32,0.5), 0 0 80px rgba(255,32,32,0.2), inset 0 0 20px rgba(0,0,0,0.3);
-        animation: pulse-glow 1.5s ease-in-out infinite;
+        background: radial-gradient(circle at 38% 38%, #ffb000, #ff5a00 70%);
+        box-shadow: 0 0 42px rgba(255,138,0,0.55), 0 0 88px rgba(255,90,0,0.25), inset 0 0 20px rgba(0,0,0,0.3);
+        animation: pulse-glow-hot 1.4s ease-in-out infinite;
       }
       .thermo-bulb.is-fire {
-        background: radial-gradient(circle at 38% 38%, #ffd700, #ff8c00 70%);
-        box-shadow: 0 0 50px rgba(255,215,0,0.6), 0 0 100px rgba(255,215,0,0.3), inset 0 0 20px rgba(0,0,0,0.3);
-        animation: pulse-glow 1s ease-in-out infinite;
+        background: radial-gradient(circle at 38% 38%, #ff6a4d, var(--thermo-red-deep) 72%);
+        box-shadow: 0 0 48px rgba(255,42,42,0.62), 0 0 110px rgba(255,0,60,0.32), inset 0 0 20px rgba(0,0,0,0.3);
+        animation: pulse-glow-fire 1s ease-in-out infinite;
       }
 
       .thermo-bulb::after {
@@ -373,10 +724,18 @@
       .amount-display {
         position: relative;
         text-align: center;
-        margin-top: 0.5rem;
+        margin-top: 1.25rem;
+      }
+
+      .amount-hero {
+        position: relative;
+        display: inline-flex;
+        justify-content: center;
+        padding-top: 3.5rem;
       }
 
       .amount-label {
+        margin-top: 0.55rem;
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.15em;
@@ -386,6 +745,7 @@
 
       .amount-value {
         font-family: "Outfit", sans-serif;
+        display: inline-block;
         font-size: 3.8rem;
         font-weight: 800;
         line-height: 1.1;
@@ -413,9 +773,8 @@
       /* ── Pet mascot sitting ON the USD amount text ── */
       .goal-pet {
         position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: calc(100% - 2.2rem);
+        left: 5.3rem;
+        top: 0;
         width: 140px;
         height: auto;
         z-index: 5;
@@ -425,10 +784,10 @@
       }
 
       @keyframes pet-idle {
-        0%, 100% { transform: translateY(0) rotate(0deg); }
-        25%  { transform: translateY(-4px) rotate(-2deg); }
-        50%  { transform: translateY(-1px) rotate(1deg); }
-        75%  { transform: translateY(-5px) rotate(-1deg); }
+        0%, 100% { transform: translateX(-50%) translateY(0) rotate(0deg); }
+        25%  { transform: translateX(-50%) translateY(-4px) rotate(-2deg); }
+        50%  { transform: translateX(-50%) translateY(-1px) rotate(1deg); }
+        75%  { transform: translateX(-50%) translateY(-5px) rotate(-1deg); }
       }
 
       /* ── Confetti (hidden until goal) ── */
@@ -456,23 +815,43 @@
       }
 
       /* ── Pulse animation when near goal ── */
-      @keyframes pulse-glow {
-        0%, 100% { box-shadow: 0 0 40px rgba(255,32,32,0.5), 0 0 80px rgba(255,32,32,0.2); }
-        50%      { box-shadow: 0 0 60px rgba(255,215,0,0.7), 0 0 120px rgba(255,215,0,0.3); }
+      @keyframes pulse-glow-hot {
+        0%, 100% { box-shadow: 0 0 42px rgba(255,138,0,0.55), 0 0 88px rgba(255,90,0,0.24); }
+        50%      { box-shadow: 0 0 58px rgba(255,0,168,0.45), 0 0 120px rgba(255,138,0,0.3); }
       }
 
-      .thermo-bulb.is-hot {
-        animation: pulse-glow 1.5s ease-in-out infinite;
+      @keyframes pulse-glow-fire {
+        0%, 100% { box-shadow: 0 0 48px rgba(255,42,42,0.62), 0 0 110px rgba(255,0,60,0.32); }
+        50%      { box-shadow: 0 0 68px rgba(255,0,60,0.8), 0 0 136px rgba(255,80,40,0.38); }
       }
 
       /* ── Responsive ── */
       @media (max-width: 480px) {
-        .jp-logo { height: 100px; }
-        .thermo-tube { height: 380px; }
-        .thermo-ticks { height: 380px; }
+        :root { --tube-height: 380px; }
+        .jp-logo { height: 124px; }
         .tick { font-size: 0.72rem; }
         .amount-value { font-size: 2.2rem; }
-        .goal-pet { width: 100px; }
+        .thermo-wrap { padding-bottom: 52px; }
+        .amount-display { margin-top: 1rem; }
+        .amount-hero { padding-top: 2.6rem; }
+        .goal-pet { left: 3.8rem; width: 100px; }
+        .hero-panel { min-height: calc(100vh + 84px); padding: 4.8rem 1rem 6rem; }
+        .hero-panel::after { height: 210px; }
+        .event-video-section { min-height: 100vh; margin-top: -56px; }
+        .event-content { min-height: 100vh; padding: 200px 1rem 6.5rem; }
+        .battle-board { grid-template-columns: 1fr; }
+        .battle-title { gap: 0.35rem 0.75rem; }
+      }
+
+      @media (max-width: 820px) {
+        .battle-board { grid-template-columns: 1fr; }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .reveal,
+        .battle-bar span {
+          transition: none;
+        }
       }
     </style>
   </head>
@@ -484,39 +863,101 @@
       Grand Prix
     </a>
 
-    <div class="jp-header">
-      <img src="/Jackpotlogo.png" alt="Jackpot" class="jp-logo" />
-    </div>
+    <main class="jackpot-page">
+      <section class="hero-panel">
+        <div class="jackpot-stage-shell">
+          <div class="jackpot-stage">
+            <div class="jp-header">
+              <img src="/Jackpotlogo.png" alt="Jackpot" class="jp-logo" />
+            </div>
 
-    <div class="thermo-wrap">
-      <div class="thermo-ticks" id="thermoTicks"></div>
+            <div class="thermo-wrap">
+              <div class="thermo-ticks" id="thermoTicks"></div>
 
-      <div class="thermo-tube">
-        <div class="tube-bg">
-          <div class="tube-fill" id="tubeFill">
-            <span class="bubble" style="left:12px;bottom:10%;width:6px;height:6px;animation-delay:0s"></span>
-            <span class="bubble" style="left:28px;bottom:20%;width:4px;height:4px;animation-delay:0.8s"></span>
-            <span class="bubble" style="left:18px;bottom:5%;width:5px;height:5px;animation-delay:1.6s"></span>
+              <div class="thermo-tube">
+                <div class="tube-bg">
+                  <div class="tube-fill" id="tubeFill">
+                    <span class="bubble" style="left:12px;bottom:10%;width:6px;height:6px;animation-delay:0s"></span>
+                    <span class="bubble" style="left:28px;bottom:20%;width:4px;height:4px;animation-delay:0.8s"></span>
+                    <span class="bubble" style="left:18px;bottom:5%;width:5px;height:5px;animation-delay:1.6s"></span>
+                  </div>
+                </div>
+                <div class="tube-glow" id="tubeGlow"></div>
+                <div class="thermo-bulb" id="thermoBulb"></div>
+              </div>
+            </div>
+
+            <div class="amount-display">
+              <div class="amount-hero">
+                <img src="/cdpet.png" alt="CD Pet" class="goal-pet" />
+                <p class="amount-value" id="amountValue">$0</p>
+              </div>
+              <p class="amount-label">Acumulado del mes</p>
+              <p class="amount-pct" id="amountPct">0%</p>
+              <p class="amount-meta" id="amountMeta"></p>
+            </div>
           </div>
         </div>
-        <div class="tube-glow" id="tubeGlow"></div>
-        <div class="thermo-bulb" id="thermoBulb"></div>
-      </div>
-    </div>
+      </section>
 
-    <div class="amount-display">
-      <img src="/cdpet.png" alt="CD Pet" class="goal-pet" />
-      <p class="amount-label">Acumulado del mes</p>
-      <p class="amount-value" id="amountValue">$0</p>
-      <p class="amount-pct" id="amountPct">0%</p>
-      <p class="amount-meta" id="amountMeta"></p>
-    </div>
+      <section class="event-video-section">
+        <video class="event-video" autoplay muted loop playsinline preload="metadata">
+          <source src="/tug-of-war.mp4" type="video/mp4" />
+        </video>
+
+        <div class="event-content">
+          <div class="battle-hero reveal">
+            <p class="event-kicker">Tug Of War</p>
+            <h1 class="battle-title">
+              <span class="boys">Boys</span>
+              <span class="vs">vs</span>
+              <span class="girls">Girls</span>
+            </h1>
+            <p class="battle-copy" id="stakesText"></p>
+          </div>
+
+          <div class="battle-board reveal">
+            <article class="battle-team battle-team--boys">
+              <div class="battle-team-head">
+                <span class="battle-name">Boys</span>
+                <strong class="battle-pct" id="boysPct">50%</strong>
+              </div>
+              <div class="battle-bar"><span id="boysBar"></span></div>
+            </article>
+
+            <article class="battle-team battle-team--girls">
+              <div class="battle-team-head">
+                <span class="battle-name">Girls</span>
+                <strong class="battle-pct" id="girlsPct">50%</strong>
+              </div>
+              <div class="battle-bar"><span id="girlsBar"></span></div>
+            </article>
+          </div>
+        </div>
+
+        <button class="tow-edit-btn" id="towEditBtn" type="button" title="Editar stakes">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+        </button>
+
+        <footer class="event-footer">Grand Prix Jackpot · Tug Of War</footer>
+      </section>
+    </main>
 
     <div class="confetti-container" id="confetti"></div>
 
     <script>
       const GOAL = 9_000_000;
       const STEPS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000];
+      const tugOfWarState = {
+        boys: 50,
+        girls: 50,
+      };
+
+      const TOW_PIN = "75572144";
+      const stakesText = document.getElementById("stakesText");
+      const towEditBtn = document.getElementById("towEditBtn");
+      let towEditing = false;
+      let towUnlocked = false;
 
       const tubeFill = document.getElementById("tubeFill");
       const tubeGlow = document.getElementById("tubeGlow");
@@ -527,6 +968,13 @@
       const jpMonth = document.getElementById("jpMonth"); // may be null
       const thermoTicks = document.getElementById("thermoTicks");
       const confettiEl = document.getElementById("confetti");
+      const stageShell = document.querySelector(".jackpot-stage-shell");
+      const stage = document.querySelector(".jackpot-stage");
+      const boysPct = document.getElementById("boysPct");
+      const girlsPct = document.getElementById("girlsPct");
+      const boysBar = document.getElementById("boysBar");
+      const girlsBar = document.getElementById("girlsBar");
+      const revealEls = document.querySelectorAll(".reveal");
 
       function formatMoney(v) {
         return new Intl.NumberFormat("es-MX", {
@@ -539,6 +987,78 @@
         return new Intl.DateTimeFormat("es-MX", {
           year: "numeric", month: "long", timeZone: "UTC",
         }).format(new Date(v + "T00:00:00Z"));
+      }
+
+      function setGlowColor(pct) {
+        if (pct >= 2 / 3) tubeGlow.style.background = "#ff003c";
+        else if (pct >= 5 / 9) tubeGlow.style.background = "#ff8a00";
+        else if (pct >= 1 / 3) tubeGlow.style.background = "#5b4dff";
+        else tubeGlow.style.background = "#00b7ff";
+      }
+
+      function setBulbState(pct) {
+        thermoBulb.classList.remove("is-warm", "is-hot", "is-fire");
+        if (pct >= 2 / 3) thermoBulb.classList.add("is-fire");
+        else if (pct >= 5 / 9) thermoBulb.classList.add("is-hot");
+        else if (pct >= 1 / 3) thermoBulb.classList.add("is-warm");
+      }
+
+      function setThermoLevel(pct) {
+        tubeFill.style.height = (pct * 100) + "%";
+        tubeGlow.style.bottom = `calc(${pct * 100}% - 6px)`;
+        setGlowColor(pct);
+        setBulbState(pct);
+      }
+
+      function updateStageScale() {
+        if (!stage || !stageShell) return;
+
+        document.documentElement.style.setProperty("--stage-scale", "1");
+
+        const widthPadding = 32;
+        const heightPadding = 64;
+        const availableWidth = Math.max(window.innerWidth - widthPadding, 320);
+        const availableHeight = Math.max(window.innerHeight - heightPadding, 320);
+        const naturalWidth = stage.offsetWidth || 760;
+        const naturalHeight = stage.offsetHeight || 980;
+        const scale = Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight);
+
+        document.documentElement.style.setProperty("--stage-scale", scale.toFixed(4));
+        stageShell.style.height = `${Math.ceil(naturalHeight * scale) + 16}px`;
+      }
+
+      function clampPercent(value) {
+        return Math.max(0, Math.min(100, Number(value) || 0));
+      }
+
+      function renderTugOfWar() {
+        const boys = clampPercent(tugOfWarState.boys);
+        const girls = clampPercent(tugOfWarState.girls);
+
+        boysPct.textContent = `${boys.toFixed(0)}%`;
+        girlsPct.textContent = `${girls.toFixed(0)}%`;
+        boysBar.style.width = `${boys}%`;
+        girlsBar.style.width = `${girls}%`;
+      }
+
+      function setupRevealAnimations() {
+        if (!("IntersectionObserver" in window)) {
+          revealEls.forEach((el) => el.classList.add("is-visible"));
+          return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add("is-visible");
+            observer.unobserve(entry.target);
+          });
+        }, {
+          threshold: 0.18,
+          rootMargin: "0px 0px -8% 0px",
+        });
+
+        revealEls.forEach((el) => observer.observe(el));
       }
 
       // Build tick marks
@@ -595,7 +1115,7 @@
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
 
-          const { totalAmount, goal, month, totalDeals, activeAgents } = data;
+          const { totalAmount, goal, month, totalDeals, activeAgents, tugOfWar } = data;
           const pct = Math.min(totalAmount / goal, 1);
 
           if (jpMonth) jpMonth.textContent = formatMonthYear(month);
@@ -604,27 +1124,21 @@
 
           // Fill thermometer with delay for visual effect
           setTimeout(() => {
-            tubeFill.style.height = (pct * 100) + "%";
-            tubeGlow.style.bottom = `calc(${pct * 100}% - 6px)`;
-            // Glow color matches fill level
-            if (pct >= 0.9) tubeGlow.style.background = "#ffd700";
-            else if (pct >= 0.7) tubeGlow.style.background = "#ff9100";
-            else if (pct >= 0.5) tubeGlow.style.background = "#ff1744";
-            else if (pct >= 0.3) tubeGlow.style.background = "#e040fb";
-            else tubeGlow.style.background = "#4fc3f7";
+            setThermoLevel(pct);
           }, 300);
 
           updateTicks(totalAmount);
           animateCount(totalAmount);
 
-          // Bulb color stages
-          thermoBulb.classList.remove("is-warm", "is-hot", "is-fire");
-          if (pct >= 0.9) thermoBulb.classList.add("is-fire");
-          else if (pct >= 0.6) thermoBulb.classList.add("is-hot");
-          else if (pct >= 0.3) thermoBulb.classList.add("is-warm");
-
           // Dynamic coins — more coins as percentage rises
           updateCoinCount(pct);
+
+          // Update tug of war with real gender data
+          if (tugOfWar) {
+            tugOfWarState.boys = tugOfWar.boys;
+            tugOfWarState.girls = tugOfWar.girls;
+            renderTugOfWar();
+          }
 
           if (pct >= 1) launchConfetti();
         } catch (err) {
@@ -638,7 +1152,11 @@
       // Jackpot always dark for drama
 
       buildTicks();
+      updateStageScale();
+      renderTugOfWar();
+      setupRevealAnimations();
       loadJackpot();
+      window.addEventListener("resize", updateStageScale);
 
       // Auto refresh every 60s
       setInterval(loadJackpot, 60_000);
@@ -682,6 +1200,71 @@
 
       // Start with a minimum
       updateCoinCount(0);
+
+      // ── Tug of War Stakes Editor ──
+      async function loadStakes() {
+        try {
+          const res = await fetch("/api/tug-stakes");
+          const data = await res.json();
+          stakesText.textContent = data.text || "";
+        } catch (e) {
+          console.error("Error loading stakes:", e);
+        }
+      }
+
+      async function saveStakes(text) {
+        try {
+          const res = await fetch("/api/tug-stakes", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ pin: TOW_PIN, text }),
+          });
+          if (!res.ok) throw new Error("Save failed");
+        } catch (e) {
+          console.error("Error saving stakes:", e);
+          window.alert("Error al guardar");
+        }
+      }
+
+      function showTowButton() {
+        towEditBtn.classList.add("is-visible");
+      }
+
+      towEditBtn.addEventListener("click", async () => {
+        if (!towUnlocked) {
+          const pin = window.prompt("Ingresa el PIN para editar");
+          if (pin === null) return;
+          if (pin.trim() !== TOW_PIN) {
+            window.alert("PIN incorrecto");
+            return;
+          }
+          towUnlocked = true;
+        }
+
+        towEditing = !towEditing;
+        towEditBtn.classList.toggle("is-editing", towEditing);
+
+        if (towEditing) {
+          stakesText.contentEditable = "true";
+          stakesText.focus();
+        } else {
+          stakesText.contentEditable = "false";
+          await saveStakes(stakesText.textContent.trim());
+        }
+      });
+
+      // Show edit button when tug section is in view
+      const towSection = document.querySelector(".event-video-section");
+      if (towSection) {
+        const towObserver = new IntersectionObserver((entries) => {
+          entries.forEach((e) => {
+            towEditBtn.classList.toggle("is-visible", e.isIntersecting);
+          });
+        }, { threshold: 0.1 });
+        towObserver.observe(towSection);
+      }
+
+      loadStakes();
     </script>
   </body>
 </html>
