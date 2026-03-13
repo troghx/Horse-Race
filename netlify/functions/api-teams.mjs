@@ -7,10 +7,10 @@ import {
 } from "../../lib/race-service.js";
 import { createBlobTeamStore } from "../../lib/netlify-team-store.js";
 
-const teamStore = createBlobTeamStore();
-
 export default async (request) => {
   try {
+    const teamStore = createBlobTeamStore();
+
     if (request.method === "POST") {
       const body = await request.json();
       const payload = await saveTeamAssignments({

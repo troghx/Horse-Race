@@ -242,6 +242,7 @@ function renderPodium(racers) {
     const prizeKey = encodePrizeAgent(r.agent);
     const savedPrize = prizeState.awards[r.agent];
     const isEditing = prizeState.active && prizeState.editorAgent === r.agent;
+    const hasPrize = Boolean(savedPrize || isEditing);
     const draftValue = isEditing ? prizeState.draftAmount : savedPrize ? String(savedPrize) : "";
 
     const prizeMarkup = prizeState.active && isEditing
@@ -274,16 +275,18 @@ function renderPodium(racers) {
           : "";
 
     return `
-      <div class="podium-card podium-card--${cls}">
-        <div class="podium-info">
-          <div class="podium-name">${r.agent}</div>
-          <div class="podium-team">
-            <span class="podium-team-dot" style="background:${r.teamColor}"></span>
-            ${r.team}
+      <div class="podium-card podium-card--${cls} ${hasPrize ? "podium-card--with-prize" : ""}">
+        <div class="podium-main">
+          <div class="podium-info">
+            <div class="podium-name">${r.agent}</div>
+            <div class="podium-team">
+              <span class="podium-team-dot" style="background:${r.teamColor}"></span>
+              ${r.team}
+            </div>
           </div>
+          <div class="podium-score">${formatNumber(r.count)}</div>
         </div>
         ${prizeMarkup}
-        <div class="podium-score">${formatNumber(r.count)}</div>
       </div>
     `;
   }).join("");

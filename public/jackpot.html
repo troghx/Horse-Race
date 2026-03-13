@@ -27,9 +27,9 @@
         --thermo-orange: #ff8a00;
         --thermo-red: #ff2a2a;
         --thermo-red-deep: #ff003c;
-        --tube-height: 480px;
-        --stage-width: 760px;
-        --stage-height: 980px;
+        --tube-height: 720px;
+        --stage-width: 1380px;
+        --stage-height: 860px;
         --stage-scale: 1;
         --red-hot: #ff2020;
         --red-glow: #ff4444;
@@ -85,9 +85,9 @@
         width: 100%;
         min-height: calc(100vh + 120px);
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
-        padding: 1.5rem 1rem 8rem;
+        padding: 1.2rem 1rem 8rem;
         overflow: hidden;
       }
 
@@ -109,16 +109,22 @@
         display: flex;
         justify-content: center;
         align-items: flex-start;
-        padding-top: 1rem;
+        padding-top: 0;
       }
 
       .jackpot-stage {
-        width: var(--stage-width);
+        width: min(var(--stage-width), calc(100vw - 40px));
+        min-height: calc(var(--tube-height) + 96px);
+        padding-inline: clamp(0.75rem, 2.8vw, 2.5rem);
         transform: scale(var(--stage-scale));
         transform-origin: top center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
+        display: grid;
+        grid-template-columns: minmax(380px, 1fr) auto minmax(380px, 1fr);
+        grid-template-rows: 1fr;
+        align-items: start;
+        justify-items: center;
+        column-gap: clamp(4rem, 8vw, 8rem);
+        row-gap: 0;
       }
 
       .event-kicker {
@@ -205,6 +211,23 @@
         display: grid;
         gap: 1rem;
         align-content: start;
+      }
+
+      .battle-notice {
+        display: inline-flex;
+        align-items: center;
+        justify-self: start;
+        width: fit-content;
+        padding: 0.7rem 1rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255,215,0,0.28);
+        background: rgba(255,215,0,0.08);
+        color: rgba(255,232,177,0.96);
+        font-family: "Outfit", sans-serif;
+        font-size: 0.92rem;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        box-shadow: 0 0 22px rgba(255,215,0,0.08);
       }
 
       .battle-title {
@@ -408,12 +431,24 @@
 
       /* ── Header ── */
       .jp-header {
+        grid-column: 3;
+        grid-row: 1;
         text-align: center;
-        margin-bottom: 2rem;
+        width: 100%;
+        max-width: 460px;
+        display: flex;
+        justify-content: center;
+        align-self: center;
+        justify-self: end;
+        padding-top: 0;
+        transform: none;
       }
       .jp-logo {
-        height: 180px;
-        margin-bottom: 0.5rem;
+        display: block;
+        width: min(100%, 460px);
+        height: auto;
+        max-width: none;
+        margin-bottom: 0;
         filter: drop-shadow(0 6px 30px rgba(255,215,0,0.35));
         animation: jp-dance 2.5s ease-in-out infinite;
       }
@@ -532,14 +567,17 @@
 
       /* ── Thermometer container ── */
       .thermo-wrap {
+        grid-column: 2;
+        grid-row: 1;
         position: relative;
         display: flex;
         align-items: flex-end;
         justify-content: center;
         gap: 0;
         width: 100%;
-        max-width: 420px;
-        padding-bottom: 58px;
+        max-width: 680px;
+        padding-bottom: 78px;
+        align-self: start;
       }
 
       /* ── Tick marks on the left ── */
@@ -549,19 +587,19 @@
         flex-direction: column-reverse;
         justify-content: space-between;
         height: var(--tube-height);
-        padding-bottom: 46px;
-        padding-top: 14px;
-        margin-right: -6px;
+        padding-bottom: 62px;
+        padding-top: 4px;
+        margin-right: 10px;
         z-index: 3;
       }
 
       .tick {
         display: flex;
         align-items: center;
-        gap: 0.35rem;
+        gap: 0.55rem;
         font-family: "Outfit", sans-serif;
         font-weight: 700;
-        font-size: 0.82rem;
+        font-size: 1.04rem;
         color: #556;
         transition: color 600ms, text-shadow 600ms;
       }
@@ -570,8 +608,8 @@
         text-shadow: 0 0 12px rgba(255,215,0,0.4);
       }
       .tick-line {
-        width: 18px;
-        height: 2px;
+        width: 30px;
+        height: 3px;
         background: #333;
         border-radius: 2px;
         transition: background 600ms;
@@ -583,7 +621,7 @@
       /* ── Tube ── */
       .thermo-tube {
         position: relative;
-        width: 72px;
+        width: 118px;
         height: var(--tube-height);
         z-index: 2;
       }
@@ -593,11 +631,11 @@
         bottom: 0;
         left: 50%;
         transform: translateX(-50%);
-        width: 52px;
+        width: 88px;
         height: 100%;
-        border-radius: 30px 30px 0 0;
+        border-radius: 44px 44px 0 0;
         background: var(--bg2);
-        border: 3px solid #2a2a44;
+        border: 4px solid #2a2a44;
         box-shadow:
           inset 0 0 20px rgba(0,0,0,0.5),
           0 0 30px rgba(0,0,0,0.3);
@@ -629,7 +667,7 @@
         background-size: 100% var(--tube-height);
         background-position: center bottom;
         background-repeat: no-repeat;
-        border-radius: 26px 26px 0 0;
+        border-radius: 40px 40px 0 0;
         transition: height 2s cubic-bezier(0.22, 0.61, 0.36, 1);
         box-shadow:
           0 0 22px rgba(0,183,255,0.45),
@@ -640,11 +678,11 @@
         content: "";
         position: absolute;
         top: 0;
-        left: 8px;
-        width: 8px;
+        left: 10px;
+        width: 10px;
         height: 60%;
         background: linear-gradient(180deg, rgba(255,255,255,0.35), transparent);
-        border-radius: 8px;
+        border-radius: 10px;
       }
 
       /* Bubbles */
@@ -666,11 +704,11 @@
         bottom: 0;
         left: 50%;
         transform: translateX(-50%);
-        width: 60px;
-        height: 12px;
+        width: 104px;
+        height: 18px;
         border-radius: 50%;
         background: var(--thermo-blue);
-        filter: blur(8px);
+        filter: blur(10px);
         opacity: 0.6;
         transition: bottom 2s cubic-bezier(0.22, 0.61, 0.36, 1), background 2s;
       }
@@ -678,14 +716,14 @@
       /* ── Bulb ── */
       .thermo-bulb {
         position: absolute;
-        bottom: -42px;
+        bottom: -66px;
         left: 50%;
         transform: translateX(-50%);
-        width: 90px;
-        height: 90px;
+        width: 138px;
+        height: 138px;
         border-radius: 50%;
         background: radial-gradient(circle at 38% 38%, #64b5f6, #1565c0 70%);
-        border: 3px solid #2a2a44;
+        border: 4px solid #2a2a44;
         box-shadow:
           0 0 40px rgba(79,195,247,0.5),
           0 0 80px rgba(79,195,247,0.2),
@@ -712,31 +750,39 @@
       .thermo-bulb::after {
         content: "";
         position: absolute;
-        top: 14px;
-        left: 18px;
-        width: 22px;
-        height: 22px;
+        top: 18px;
+        left: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: radial-gradient(circle, rgba(255,255,255,0.45), transparent 70%);
       }
 
       /* ── Current amount display ── */
       .amount-display {
+        grid-column: 1;
+        grid-row: 1;
         position: relative;
+        width: 100%;
+        max-width: 560px;
         text-align: center;
-        margin-top: 1.25rem;
+        margin-top: 0;
+        align-self: center;
+        justify-self: start;
+        padding-top: 0;
+        transform: translateX(-118px);
       }
 
       .amount-hero {
         position: relative;
         display: inline-flex;
         justify-content: center;
-        padding-top: 3.5rem;
+        padding-top: 2.7rem;
       }
 
       .amount-label {
-        margin-top: 0.55rem;
-        font-size: 0.75rem;
+        margin-top: 0.62rem;
+        font-size: 0.82rem;
         text-transform: uppercase;
         letter-spacing: 0.15em;
         color: #8888aa;
@@ -746,9 +792,9 @@
       .amount-value {
         font-family: "Outfit", sans-serif;
         display: inline-block;
-        font-size: 3.8rem;
+        font-size: 5.35rem;
         font-weight: 800;
-        line-height: 1.1;
+        line-height: 1.02;
         background: linear-gradient(180deg, #fff 0%, #ffd700 50%, #ff8c00 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -758,24 +804,25 @@
 
       .amount-pct {
         font-family: "Outfit", sans-serif;
-        font-size: 1.1rem;
+        font-size: 1.48rem;
         font-weight: 700;
         color: var(--green-neon);
-        margin-top: 0.2rem;
+        margin-top: 0.28rem;
       }
 
       .amount-meta {
-        margin-top: 0.5rem;
-        font-size: 0.8rem;
+        margin-top: 0.62rem;
+        font-size: 1rem;
         color: #666;
+        max-width: 28rem;
       }
 
       /* ── Pet mascot sitting ON the USD amount text ── */
       .goal-pet {
         position: absolute;
-        left: 5.3rem;
-        top: 0;
-        width: 140px;
+        left: 7.35rem;
+        top: -0.25rem;
+        width: 188px;
         height: auto;
         z-index: 5;
         filter: drop-shadow(0 4px 16px rgba(255,215,0,0.5));
@@ -826,9 +873,62 @@
       }
 
       /* ── Responsive ── */
+      @media (max-width: 980px) {
+        :root {
+          --tube-height: 520px;
+          --stage-width: 760px;
+          --stage-height: 980px;
+        }
+        .jackpot-stage {
+          width: min(var(--stage-width), calc(100vw - 24px));
+          min-height: 0;
+          padding-inline: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-start;
+          row-gap: 0.6rem;
+        }
+        .jp-header,
+        .thermo-wrap,
+        .amount-display {
+          grid-column: auto;
+          grid-row: auto;
+        }
+        .jp-header {
+          width: auto;
+          max-width: none;
+          display: block;
+          margin-bottom: 1rem;
+          padding-top: 0;
+          transform: none;
+        }
+        .jp-logo {
+          width: 300px;
+          height: auto;
+        }
+        .thermo-wrap {
+          max-width: 540px;
+          padding-bottom: 60px;
+        }
+        .amount-display {
+          max-width: none;
+          margin-top: 1.25rem;
+          padding-top: 0;
+          transform: none;
+        }
+        .amount-value {
+          font-size: 3.6rem;
+        }
+        .goal-pet {
+          left: 5.1rem;
+          width: 138px;
+        }
+      }
+
       @media (max-width: 480px) {
         :root { --tube-height: 380px; }
-        .jp-logo { height: 124px; }
+        .jp-logo { width: 200px; height: auto; }
         .tick { font-size: 0.72rem; }
         .amount-value { font-size: 2.2rem; }
         .thermo-wrap { padding-bottom: 52px; }
@@ -901,13 +1001,14 @@
       </section>
 
       <section class="event-video-section">
-        <video class="event-video" autoplay muted loop playsinline preload="metadata">
-          <source src="/tug-of-war.mp4" type="video/mp4" />
+        <video class="event-video" muted loop playsinline preload="none">
+          <source data-src="/tug-of-war.mp4" type="video/mp4" />
         </video>
 
         <div class="event-content">
           <div class="battle-hero reveal">
             <p class="event-kicker">Tug Of War</p>
+            <p class="battle-notice">Empieza el lunes 16 de marzo de 2026</p>
             <h1 class="battle-title">
               <span class="boys">Boys</span>
               <span class="vs">vs</span>
@@ -920,7 +1021,7 @@
             <article class="battle-team battle-team--boys">
               <div class="battle-team-head">
                 <span class="battle-name">Boys</span>
-                <strong class="battle-pct" id="boysPct">50%</strong>
+                <strong class="battle-pct" id="boysPct">0%</strong>
               </div>
               <div class="battle-bar"><span id="boysBar"></span></div>
             </article>
@@ -928,7 +1029,7 @@
             <article class="battle-team battle-team--girls">
               <div class="battle-team-head">
                 <span class="battle-name">Girls</span>
-                <strong class="battle-pct" id="girlsPct">50%</strong>
+                <strong class="battle-pct" id="girlsPct">0%</strong>
               </div>
               <div class="battle-bar"><span id="girlsBar"></span></div>
             </article>
@@ -948,9 +1049,12 @@
     <script>
       const GOAL = 9_000_000;
       const STEPS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000];
+      const JACKPOT_CACHE_KEY = "grand_prix_jackpot_cache_v1";
+      const STAKES_CACHE_KEY = "grand_prix_tug_stakes_v1";
+      const TUG_EVENT_START_DATE = "2026-03-16";
       const tugOfWarState = {
-        boys: 50,
-        girls: 50,
+        boys: 0,
+        girls: 0,
       };
 
       const TOW_PIN = "75572144";
@@ -975,6 +1079,8 @@
       const boysBar = document.getElementById("boysBar");
       const girlsBar = document.getElementById("girlsBar");
       const revealEls = document.querySelectorAll(".reveal");
+      const eventVideo = document.querySelector(".event-video");
+      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
       function formatMoney(v) {
         return new Intl.NumberFormat("es-MX", {
@@ -1010,13 +1116,27 @@
         setBulbState(pct);
       }
 
+      function readCache(key) {
+        try {
+          return JSON.parse(localStorage.getItem(key) || "null");
+        } catch {
+          return null;
+        }
+      }
+
+      function writeCache(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch {}
+      }
+
       function updateStageScale() {
         if (!stage || !stageShell) return;
 
         document.documentElement.style.setProperty("--stage-scale", "1");
 
-        const widthPadding = 32;
-        const heightPadding = 64;
+        const widthPadding = 12;
+        const heightPadding = 12;
         const availableWidth = Math.max(window.innerWidth - widthPadding, 320);
         const availableHeight = Math.max(window.innerHeight - heightPadding, 320);
         const naturalWidth = stage.offsetWidth || 760;
@@ -1031,9 +1151,20 @@
         return Math.max(0, Math.min(100, Number(value) || 0));
       }
 
+      function isTugEventLive() {
+        const today = new Date();
+        const todayKey = [
+          today.getFullYear(),
+          String(today.getMonth() + 1).padStart(2, "0"),
+          String(today.getDate()).padStart(2, "0"),
+        ].join("-");
+        return todayKey >= TUG_EVENT_START_DATE;
+      }
+
       function renderTugOfWar() {
-        const boys = clampPercent(tugOfWarState.boys);
-        const girls = clampPercent(tugOfWarState.girls);
+        const eventLive = isTugEventLive();
+        const boys = eventLive ? clampPercent(tugOfWarState.boys) : 0;
+        const girls = eventLive ? clampPercent(tugOfWarState.girls) : 0;
 
         boysPct.textContent = `${boys.toFixed(0)}%`;
         girlsPct.textContent = `${girls.toFixed(0)}%`;
@@ -1059,6 +1190,17 @@
         });
 
         revealEls.forEach((el) => observer.observe(el));
+      }
+
+      function loadEventVideo() {
+        if (!eventVideo || eventVideo.dataset.loaded === "true" || prefersReducedMotion) return;
+        const source = eventVideo.querySelector("source[data-src]");
+        if (!source) return;
+
+        source.src = source.dataset.src;
+        eventVideo.dataset.loaded = "true";
+        eventVideo.load();
+        eventVideo.play().catch(() => {});
       }
 
       // Build tick marks
@@ -1109,11 +1251,44 @@
         requestAnimationFrame(tick);
       }
 
+      function applyJackpotPayload(data, options = {}) {
+        const totalAmount = Number(data?.totalAmount) || 0;
+        const goal = Number(data?.goal) || GOAL;
+        const month = data?.month || "";
+        const totalDeals = Number(data?.totalDeals) || 0;
+        const activeAgents = Number(data?.activeAgents) || 0;
+        const pct = Math.min(goal > 0 ? totalAmount / goal : 0, 1);
+        const staleNote = options.stale ? " · mostrando ultimo dato guardado" : "";
+
+        if (jpMonth && month) jpMonth.textContent = formatMonthYear(month);
+        amountPct.textContent = (pct * 100).toFixed(1) + "% del Jackpot";
+        amountMeta.textContent = `${totalDeals} ventas/deals · ${activeAgents} vendedores${staleNote}`;
+
+        setTimeout(() => {
+          setThermoLevel(pct);
+        }, 300);
+
+        updateTicks(totalAmount);
+        animateCount(totalAmount);
+        updateCoinCount(pct);
+
+        if (data?.tugOfWar) {
+          tugOfWarState.boys = data.tugOfWar.boys;
+          tugOfWarState.girls = data.tugOfWar.girls;
+          renderTugOfWar();
+        }
+
+        if (pct >= 1) launchConfetti();
+      }
+
       async function loadJackpot() {
         try {
           const res = await fetch("/api/jackpot");
           const data = await res.json();
           if (!res.ok) throw new Error(data.error);
+          writeCache(JACKPOT_CACHE_KEY, data);
+          applyJackpotPayload(data);
+          return;
 
           const { totalAmount, goal, month, totalDeals, activeAgents, tugOfWar } = data;
           const pct = Math.min(totalAmount / goal, 1);
@@ -1143,6 +1318,11 @@
           if (pct >= 1) launchConfetti();
         } catch (err) {
           console.error("Error loading jackpot:", err);
+          const cached = readCache(JACKPOT_CACHE_KEY);
+          if (cached) {
+            applyJackpotPayload(cached, { stale: true });
+            return;
+          }
           if (jpMonth) jpMonth.textContent = "Error al cargar datos";
         }
       }
@@ -1186,7 +1366,10 @@
 
       function updateCoinCount(pct) {
         // 0% → 5 coins, 50% → 18, 100% → 40
-        const target = Math.round(5 + pct * 35);
+        const compactMode = prefersReducedMotion || window.innerWidth <= 820;
+        const minCoins = prefersReducedMotion ? 0 : compactMode ? 2 : 4;
+        const maxCoins = prefersReducedMotion ? 0 : compactMode ? 10 : 18;
+        const target = Math.round(minCoins + pct * (maxCoins - minCoins));
         while (currentCoinCount < target) {
           coinsContainer.appendChild(createCoin());
           currentCoinCount++;
@@ -1207,8 +1390,11 @@
           const res = await fetch("/api/tug-stakes");
           const data = await res.json();
           stakesText.textContent = data.text || "";
+          writeCache(STAKES_CACHE_KEY, { text: data.text || "" });
         } catch (e) {
           console.error("Error loading stakes:", e);
+          const cached = readCache(STAKES_CACHE_KEY);
+          stakesText.textContent = cached?.text || "";
         }
       }
 
@@ -1259,9 +1445,12 @@
         const towObserver = new IntersectionObserver((entries) => {
           entries.forEach((e) => {
             towEditBtn.classList.toggle("is-visible", e.isIntersecting);
+            if (e.isIntersecting) loadEventVideo();
           });
-        }, { threshold: 0.1 });
+        }, { threshold: 0.1, rootMargin: "240px 0px" });
         towObserver.observe(towSection);
+      } else {
+        loadEventVideo();
       }
 
       loadStakes();

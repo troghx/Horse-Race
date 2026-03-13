@@ -1,3 +1,4 @@
+import seedStakes from "../../data/tug-stakes.json" with { type: "json" };
 import { getStore } from "@netlify/blobs";
 
 const STORE_NAME = "horse-race";
@@ -11,12 +12,18 @@ function json(status, body) {
   });
 }
 
-export default async (request) => {
-  const store = getStore(STORE_NAME);
+function normalizeText(value) {
+  return String(value || "").trim().slice(0, 500);
+}
 
+export default async (request) => {
   if (request.method === "GET") {
-    const data = await store.get(STAKES_KEY, { type: "json" }).catch(() => null);
-    return json(200, { text: data?.text ?? "" });
+    try {
+      const data = await getStore(STORE_NAME).get(STAKES_KEY, { type: "json" });
+      return json(200, { text: normalizeText(data?.text) || normalizeText(seedStakes?.text) });
+    } catch {
+      return json(200, { text: normalizeText(seedStakes?.text) });
+    }
   }
 
   if (request.method === "PUT") {
@@ -27,9 +34,14 @@ export default async (request) => {
       return json(403, { error: "PIN incorrecto" });
     }
 
-    const text = (body.text || "").slice(0, 500);
-    await store.setJSON(STAKES_KEY, { text });
-    return json(200, { text });
+    const text = normalizeText(body.text);
+
+    try {
+      await getStore(STORE_NAME).setJSON(STAKES_KEY, { text });
+      return json(200, { text });
+    } catch {
+      return json(503, { error: "No se pudo guardar el texto en este momento" });
+    }
   }
 
   return json(405, { error: "Method not allowed" });

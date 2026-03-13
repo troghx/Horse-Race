@@ -3,11 +3,10 @@ import seedTeamConfig from "../../data/teams.json" with { type: "json" };
 import { createRacePayload, jsonResponse } from "../../lib/race-service.js";
 import { createBlobTeamStore } from "../../lib/netlify-team-store.js";
 
-const teamStore = createBlobTeamStore();
-
 export default async (request) => {
   try {
     const url = new URL(request.url);
+    const teamStore = createBlobTeamStore();
     const payload = await createRacePayload({
       period: url.searchParams.get("period"),
       anchor: url.searchParams.get("anchor"),
