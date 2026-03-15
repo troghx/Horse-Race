@@ -376,41 +376,49 @@ function renderEditorColumns() {
   bindDragDrop();
 }
 
+let dragDropBound = false;
 function bindDragDrop() {
-  const chips = teamEditor.querySelectorAll(".agent-chip");
-  const cols = teamEditor.querySelectorAll(".team-col");
+  if (dragDropBound) return;
+  dragDropBound = true;
 
-  chips.forEach((chip) => {
-    chip.addEventListener("dragstart", (e) => {
-      e.dataTransfer.setData("text/plain", chip.dataset.agent);
-      e.dataTransfer.effectAllowed = "move";
-      requestAnimationFrame(() => chip.classList.add("dragging"));
-    });
-    chip.addEventListener("dragend", () => {
-      chip.classList.remove("dragging");
-      cols.forEach((c) => c.classList.remove("drag-over"));
-    });
+  teamEditor.addEventListener("dragstart", (e) => {
+    const chip = e.target.closest(".agent-chip");
+    if (!chip) return;
+    e.dataTransfer.setData("text/plain", chip.dataset.agent);
+    e.dataTransfer.effectAllowed = "move";
+    requestAnimationFrame(() => chip.classList.add("dragging"));
   });
 
-  cols.forEach((col) => {
-    col.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      col.classList.add("drag-over");
-    });
-    col.addEventListener("dragleave", (e) => {
-      if (!col.contains(e.relatedTarget)) col.classList.remove("drag-over");
-    });
-    col.addEventListener("drop", (e) => {
-      e.preventDefault();
-      col.classList.remove("drag-over");
-      const agent = e.dataTransfer.getData("text/plain");
-      const newTeam = col.dataset.team;
-      if (agent && newTeam && editorAssignments[agent] !== newTeam) {
-        editorAssignments[agent] = newTeam;
-        renderEditorColumns();
-      }
-    });
+  teamEditor.addEventListener("dragend", (e) => {
+    const chip = e.target.closest(".agent-chip");
+    if (chip) chip.classList.remove("dragging");
+    teamEditor.querySelectorAll(".team-col").forEach((c) => c.classList.remove("drag-over"));
+  });
+
+  teamEditor.addEventListener("dragover", (e) => {
+    const col = e.target.closest(".team-col");
+    if (!col) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    col.classList.add("drag-over");
+  });
+
+  teamEditor.addEventListener("dragleave", (e) => {
+    const col = e.target.closest(".team-col");
+    if (col && !col.contains(e.relatedTarget)) col.classList.remove("drag-over");
+  });
+
+  teamEditor.addEventListener("drop", (e) => {
+    const col = e.target.closest(".team-col");
+    if (!col) return;
+    e.preventDefault();
+    col.classList.remove("drag-over");
+    const agent = e.dataTransfer.getData("text/plain");
+    const newTeam = col.dataset.team;
+    if (agent && newTeam && editorAssignments[agent] !== newTeam) {
+      editorAssignments[agent] = newTeam;
+      renderEditorColumns();
+    }
   });
 }
 
@@ -545,7 +553,10 @@ async function loadRace(forceRefresh = false) {
   track.innerHTML = `<div class="empty-state">Actualizando...</div>`;
 
   try {
-    const res = await fetch(`/api/race?${params.toString()}`);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+    const res = await fetch(`/api/race?${params.toString()}`, { signal: controller.signal });
+    clearTimeout(timeout);
     const payload = await res.json();
     if (!res.ok) throw new Error(payload.error || "Error de carga");
 
@@ -595,7 +606,16 @@ refreshButton.addEventListener("click", () => loadRace(true));
 const jackpotButton = $("#jackpotButton");
 if (jackpotButton) {
   jackpotButton.addEventListener("click", () => {
-    window.open("/jackpot.html", "_blank");
+    window.location.href = "/jackpot.html";
+  });
+}
+
+/* ══ Inbound Competition ══ */
+
+const inboundCompetitionButton = $("#inboundCompetitionButton");
+if (inboundCompetitionButton) {
+  inboundCompetitionButton.addEventListener("click", () => {
+    window.location.href = "/jackpot.html#inbound";
   });
 }
 
@@ -615,18 +635,16 @@ if (jackpotButton) {
     logo.classList.remove("is-dancing");
     void logo.offsetWidth;
     logo.classList.add("is-spinning");
-    logo.addEventListener("animationend", function onSpin() {
-      logo.removeEventListener("animationend", onSpin);
+    logo.addEventListener("animationend", () => {
       logo.classList.remove("is-spinning");
       void logo.offsetWidth;
       logo.classList.add("is-bouncing");
-      logo.addEventListener("animationend", function onBounce() {
-        logo.removeEventListener("animationend", onBounce);
+      logo.addEventListener("animationend", () => {
         logo.classList.remove("is-bouncing");
         void logo.offsetWidth;
         startDance();
-      });
-    });
+      }, { once: true });
+    }, { once: true });
   }
 
   // Start dancing right away, burst every 12s

@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   createFileTeamStore,
+  createInboundPayload,
   createJackpotPayload,
   createRacePayload,
   createTeamsPayload,
@@ -126,7 +127,7 @@ async function serveStatic(filePath, req, res) {
       res.writeHead(200, {
         "Content-Type": mimeTypes[ext] || "application/octet-stream",
         "Content-Encoding": "gzip",
-        "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
+        "Cache-Control": ext === ".html" ? "no-store" : ext === ".png" || ext === ".ico" ? "public, max-age=86400" : "public, max-age=3600",
       });
       const gz = createGzip();
       gz.pipe(res);
@@ -134,7 +135,7 @@ async function serveStatic(filePath, req, res) {
     } else {
       res.writeHead(200, {
         "Content-Type": mimeTypes[ext] || "application/octet-stream",
-        "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=300",
+        "Cache-Control": ext === ".html" ? "no-store" : ext === ".png" || ext === ".ico" ? "public, max-age=86400" : "public, max-age=3600",
       });
       res.end(content);
     }
@@ -154,6 +155,19 @@ const server = createServer(async (req, res) => {
       const payload = await createJackpotPayload({
         refresh: url.searchParams.get("refresh") === "1",
         teamStore,
+        sheetUrl: process.env.SHEET_URL,
+      });
+      sendJson(res, 200, payload, req);
+    } catch (error) {
+      sendJson(res, 500, { error: error.message });
+    }
+    return;
+  }
+
+  if (url.pathname === "/api/inbound") {
+    try {
+      const payload = await createInboundPayload({
+        refresh: url.searchParams.get("refresh") === "1",
         sheetUrl: process.env.SHEET_URL,
       });
       sendJson(res, 200, payload, req);
