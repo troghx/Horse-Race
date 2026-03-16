@@ -848,6 +848,84 @@
         z-index: 2;
       }
 
+      .thermo-goal-banner {
+        position: relative;
+        width: min(390px, 100%);
+        max-width: 390px;
+        margin: -1.5rem auto 4.8rem;
+        padding: 0;
+        border-radius: 0;
+        background: transparent;
+        border: 1px solid transparent;
+        box-shadow: none;
+        display: grid;
+        justify-items: center;
+        row-gap: 0.15rem;
+        text-align: center;
+        transform: translateX(-34px);
+        overflow: visible;
+      }
+
+      .thermo-goal-banner::before {
+        content: none;
+      }
+
+      .thermo-goal-label,
+      .thermo-goal-reward-label {
+        position: relative;
+        z-index: 1;
+        display: block;
+        font-family: "Outfit", sans-serif;
+        font-size: 1.12rem;
+        font-weight: 700;
+        letter-spacing: 0.24em;
+        text-transform: uppercase;
+      }
+
+      .thermo-goal-label {
+        color: rgba(255,227,148,0.86);
+      }
+
+      .thermo-goal-value {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.72rem;
+        font-family: "Outfit", sans-serif;
+        font-size: 6rem;
+        font-weight: 800;
+        line-height: 0.92;
+        color: #fff4c7;
+        text-shadow: 0 0 28px rgba(255,215,0,0.26);
+      }
+
+      .thermo-goal-divider {
+        position: relative;
+        z-index: 1;
+        width: min(320px, 100%);
+        height: 1px;
+        margin: 1.35rem auto 1.25rem;
+        background: linear-gradient(90deg, transparent 0%, rgba(255,215,0,0.22) 20%, rgba(255,215,0,0.44) 50%, rgba(255,215,0,0.22) 80%, transparent 100%);
+      }
+
+      .thermo-goal-reward-label {
+        color: rgba(255,255,255,0.48);
+      }
+
+      .thermo-goal-reward {
+        position: relative;
+        z-index: 1;
+        margin-top: 0.72rem;
+        font-family: "Outfit", sans-serif;
+        font-size: 1.92rem;
+        font-weight: 700;
+        line-height: 1.18;
+        color: #ffffff;
+      }
+
+      .thermo-goal-reward strong {
+        color: #ffd700;
+      }
+
       .tube-bg {
         position: absolute;
         bottom: 0;
@@ -1014,6 +1092,7 @@
       .amount-value {
         font-family: "Outfit", sans-serif;
         display: inline-block;
+        white-space: nowrap;
         font-size: 5.35rem;
         font-weight: 800;
         line-height: 1.02;
@@ -1174,6 +1253,19 @@
         .tick { font-size: 0.6rem; }
         .amount-value { font-size: 1.6rem; }
         .thermo-wrap { padding-bottom: 36px; max-width: 100%; }
+        .thermo-goal-banner {
+          width: min(430px, 88vw);
+          margin: -0.5rem auto 2.8rem;
+          justify-items: center;
+          row-gap: 0.12rem;
+          text-align: center;
+          transform: none;
+        }
+        .thermo-goal-label,
+        .thermo-goal-reward-label { font-size: 0.84rem; }
+        .thermo-goal-value { font-size: 3.55rem; margin-top: 0.55rem; }
+        .thermo-goal-divider { width: min(280px, 100%); margin: 1rem auto 0.9rem; }
+        .thermo-goal-reward { font-size: 1.32rem; margin-top: 0.55rem; }
         .amount-display { margin-top: 0.5rem; }
         .goal-pet { left: 2rem; width: 60px; }
 
@@ -1573,6 +1665,13 @@
             </div>
 
             <div class="amount-display">
+              <div class="thermo-goal-banner" aria-label="Meta del Jackpot">
+                <span class="thermo-goal-label">Meta del Jackpot</span>
+                <p class="thermo-goal-value" id="goalTargetValue">$9,000,000</p>
+                <div class="thermo-goal-divider"></div>
+                <span class="thermo-goal-reward-label">Recompensa al romperlo</span>
+                <p class="thermo-goal-reward">Cena de <strong>equipo</strong></p>
+              </div>
               <div class="amount-hero">
                 <img src="/cdpet.png" alt="CD Pet" class="goal-pet" />
                 <p class="amount-value" id="amountValue">$0</p>
@@ -1644,7 +1743,7 @@
 
     <section class="inbound-section" id="inbound">
       <div class="inbound-bg-campaigns">
-        <span class="inbound-bg-label inbound-bg-label--ecomfy">EComfy</span>
+        <span class="inbound-bg-label inbound-bg-label--ecomfy">EComfy / NBTV</span>
         <span class="inbound-bg-label inbound-bg-label--radio">Radio</span>
         <span class="inbound-bg-label inbound-bg-label--atmedia">Social</span>
       </div>
@@ -1658,7 +1757,7 @@
         <div class="inbound-lanes reveal" id="inboundLanes">
           <div class="inbound-lane inbound-lane--ecomfy">
             <div class="inbound-lane-head">
-              <p class="inbound-lane-name">EComfy</p>
+              <p class="inbound-lane-name">EComfy / NBTV</p>
             </div>
             <div class="inbound-lane-list" id="inboundEcomfy">
               <div class="inbound-empty">Sin datos aun.</div>
@@ -1721,6 +1820,7 @@
       const amountValue = document.getElementById("amountValue");
       const amountPct = document.getElementById("amountPct");
       const amountMeta = document.getElementById("amountMeta");
+      const goalTargetValue = document.getElementById("goalTargetValue");
       const jpMonth = document.getElementById("jpMonth"); // may be null
       const thermoTicks = document.getElementById("thermoTicks");
       const confettiEl = document.getElementById("confetti");
@@ -1740,9 +1840,16 @@
       const urlParams = new URLSearchParams(window.location.search);
 
       function formatMoney(v) {
-        return new Intl.NumberFormat("es-MX", {
-          style: "currency", currency: "USD",
-          minimumFractionDigits: 0, maximumFractionDigits: 0,
+        return "$" + new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(v);
+      }
+
+      function formatMoneyWithCode(v) {
+        return "USD " + new Intl.NumberFormat("en-US", {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
         }).format(v);
       }
 
@@ -2137,7 +2244,7 @@
           const progress = Math.min(elapsed / duration, 1);
           const eased = 1 - Math.pow(1 - progress, 3);
           const current = Math.round(target * eased);
-          amountValue.textContent = formatMoney(current);
+          amountValue.textContent = formatMoneyWithCode(current);
           if (progress < 1) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
@@ -2153,6 +2260,7 @@
         const staleNote = options.stale ? " · mostrando ultimo dato guardado" : "";
 
         if (jpMonth && month) jpMonth.textContent = formatMonthYear(month);
+        if (goalTargetValue) goalTargetValue.textContent = formatMoney(goal);
         amountPct.textContent = (pct * 100).toFixed(1) + "% del Jackpot";
         amountMeta.textContent = `${totalDeals} ventas/deals · ${activeAgents} vendedores${staleNote}`;
 

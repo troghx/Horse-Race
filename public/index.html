@@ -63,10 +63,27 @@
               <button class="period-btn" data-period="month">Mes</button>
             </div>
           </div>
+          <div class="topbar-view">
+            <div class="segmented" id="viewSwitcher" aria-label="Modo de vista">
+              <button class="view-btn is-active" data-view="individual">Individual</button>
+              <button class="view-btn" data-view="teams">Teams</button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <p class="range-note" id="rangeLabel"></p>
+      <div class="status-marquee">
+        <p class="range-note" id="rangeLabel"></p>
+        <section class="news-ribbon" id="newsRibbon">
+          <button class="news-ribbon-btn" id="tickerButton" type="button" title="Activa prize mode para editar las leyendas">
+            <span class="news-ribbon-label">Ultima hora</span>
+            <span class="news-ribbon-live" aria-hidden="true"></span>
+            <span class="news-ribbon-viewport" aria-live="polite">
+              <span class="news-ribbon-copy" id="tickerText">Cargando leyendas...</span>
+            </span>
+          </button>
+        </section>
+      </div>
 
       <!-- Main: track left + sidebar right -->
       <div class="main-layout">
@@ -101,13 +118,13 @@
       <!-- Leaderboard -->
       <section class="panel leaderboard">
         <div class="leaderboard-head">
-          <p class="eyebrow">Clasificacion</p>
-          <h2>Tabla completa</h2>
+          <p class="eyebrow" id="leaderboardEyebrow">Clasificacion</p>
+          <h2 id="leaderboardTitle">Tabla completa</h2>
         </div>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
+            <thead id="leaderboardHead">
+              <tr id="leaderboardHeadRow">
                 <th>#</th>
                 <th>Vendedor</th>
                 <th>Equipo</th>
@@ -137,6 +154,22 @@
         <div class="team-editor" id="teamEditor"></div>
         <div class="modal-bottom">
           <button class="accent-btn" id="saveTeams" type="button">Guardar cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-overlay" id="tickerModal">
+      <div class="modal-card modal-card--compact">
+        <div class="modal-top">
+          <h2>Editar leyendas del ticker</h2>
+          <button class="icon-btn" id="closeTickerModal" type="button" title="Cerrar">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="ticker-editor" id="tickerEditor"></div>
+        <div class="modal-bottom modal-bottom--split">
+          <button class="ghost-btn" id="addTickerLine" type="button">Agregar linea</button>
+          <button class="accent-btn" id="saveTickerLines" type="button">Guardar leyendas</button>
         </div>
       </div>
     </div>

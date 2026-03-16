@@ -10,6 +10,7 @@ export default async (request) => {
     const payload = await createRacePayload({
       period: url.searchParams.get("period"),
       anchor: url.searchParams.get("anchor"),
+      view: url.searchParams.get("view"),
       refresh: url.searchParams.get("refresh") === "1",
       teamStore,
       sheetUrl: process.env.SHEET_URL,

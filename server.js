@@ -70,6 +70,7 @@ async function handleApiRace(url, req, res) {
     const payload = await createRacePayload({
       period: url.searchParams.get("period"),
       anchor: url.searchParams.get("anchor"),
+      view: url.searchParams.get("view"),
       refresh: url.searchParams.get("refresh") === "1",
       teamStore,
       sheetUrl: process.env.SHEET_URL,
@@ -169,6 +170,7 @@ const server = createServer(async (req, res) => {
       const payload = await createInboundPayload({
         refresh: url.searchParams.get("refresh") === "1",
         sheetUrl: process.env.SHEET_URL,
+        teamStore,
       });
       sendJson(res, 200, payload, req);
     } catch (error) {

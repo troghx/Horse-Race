@@ -1,17 +1,27 @@
 const state = {
   period: "day",
+  individualPeriod: "day",
   anchorDate: "",
   latestDate: "",
   earliestDate: "",
+  latestRace: null,
+  viewMode: localStorage.getItem("grand_prix_view_mode_v1") === "teams" ? "teams" : "individual",
 };
 
 const $ = (s) => document.querySelector(s);
 const rangeLabel = $("#rangeLabel");
 const track = $("#track");
 const leaderboardBody = $("#leaderboardBody");
+const leaderboardEyebrow = $("#leaderboardEyebrow");
+const leaderboardTitle = $("#leaderboardTitle");
+const leaderboardHeadRow = $("#leaderboardHeadRow");
+const newsRibbon = $("#newsRibbon");
+const tickerButton = $("#tickerButton");
+const tickerText = $("#tickerText");
 const anchorDateInput = $("#anchorDate");
 const refreshButton = $("#refreshButton");
 const periodSwitcher = $("#periodSwitcher");
+const viewSwitcher = $("#viewSwitcher");
 const themeToggle = $("#themeToggle");
 const teamBar = $("#teamBar");
 const leaderBanner = $("#leaderBanner");
@@ -20,16 +30,41 @@ const teamEditor = $("#teamEditor");
 const closeModalBtn = $("#closeModal");
 const saveTeamsBtn = $("#saveTeams");
 const editTeamsBtn = $("#editTeamsBtn");
+const tickerModal = $("#tickerModal");
+const tickerEditor = $("#tickerEditor");
+const closeTickerModalBtn = $("#closeTickerModal");
+const addTickerLineBtn = $("#addTickerLine");
+const saveTickerLinesBtn = $("#saveTickerLines");
 const prizeModeButton = $("#prizeModeButton");
 const TEAM_EDITOR_PIN = "75572144";
+const VIEW_MODE_KEY = "grand_prix_view_mode_v1";
 const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
+const TICKER_MESSAGES_KEY = "grand_prix_ticker_messages_v1";
+const TICKER_ROTATION_MS = 7000;
+const MAX_TICKER_LINES = 10;
+const TEAMS_COMPETITION_START = "2026-03-16";
+const TEAMS_COMPETITION_END = "2026-03-19";
 const PRIZE_SLOTS = new Set(["gold", "silver", "bronze"]);
+const TEAMS_COMPETITION_HINT = `La competencia por teams usa el corte fijo del ${TEAMS_COMPETITION_START} al ${TEAMS_COMPETITION_END}.`;
 const prizeState = {
   active: false,
   editorSlot: "",
   draftAmount: "",
   awards: {},
   podiumRacers: [],
+};
+const DEFAULT_TICKER_MESSAGES = [
+  "El Team ganador sera recompensado con STARBUCKS!",
+  "Se calcula que lloveran 27 ventas para el dia de hoy 🥵",
+  "Cash Avengers ya calienta motores para el cierre de hoy.",
+  "Ultima hora: cada deal cuenta en la batalla por la cima.",
+  "La mesa de control reporta presion maxima en el leaderboard.",
+];
+const tickerState = {
+  items: [],
+  draftItems: [],
+  index: 0,
+  timerId: 0,
 };
 
 /* ══ Theme ══ */
@@ -44,6 +79,7 @@ themeToggle.addEventListener("click", () => {
 });
 
 applyTheme(localStorage.getItem("theme") || "light");
+setActiveViewMode(state.viewMode);
 
 /* ══ Racer icon ══ */
 
@@ -78,6 +114,144 @@ function formatNumber(v) { return fmtNumber.format(v); }
 function formatMoney(v) { return fmtMoney.format(v); }
 function formatDate(v) { return fmtDate.format(new Date(`${v}T00:00:00Z`)); }
 function formatMonthYear(v) { return fmtMonthYear.format(new Date(`${v}T00:00:00Z`)); }
+function formatShortName(value) {
+  const parts = String(value || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return parts[0] || "";
+  return `${parts[0]} ${parts[1].charAt(0).toUpperCase()}.`;
+}
+function buildTeamEntries(race) {
+  const leaderCount = race.teamStandings?.[0]?.count || 0;
+  const membersByTeam = new Map();
+
+  for (const racer of race.racers || []) {
+    if (!membersByTeam.has(racer.team)) membersByTeam.set(racer.team, []);
+    membersByTeam.get(racer.team).push(racer);
+  }
+
+  return (race.teamStandings || []).map((team) => {
+    const members = (membersByTeam.get(team.team) || []).slice().sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      if (b.amount !== a.amount) return b.amount - a.amount;
+      return a.agent.localeCompare(b.agent, "es");
+    });
+
+    return {
+      ...team,
+      agent: team.team,
+      teamColor: team.color,
+      progress: leaderCount ? team.count / leaderCount : 0,
+      gap: Math.max(leaderCount - team.count, 0),
+      topAgent: members[0]?.agent || "",
+      topAgentCount: members[0]?.count || 0,
+    };
+  });
+}
+
+function normalizeTickerMessages(messages) {
+  return (Array.isArray(messages) ? messages : [])
+    .map((message) => String(message || "").trim())
+    .filter(Boolean)
+    .slice(0, MAX_TICKER_LINES);
+}
+
+function loadTickerMessages() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TICKER_MESSAGES_KEY) || "[]");
+    const normalized = normalizeTickerMessages(stored);
+    return normalized.length ? normalized : [...DEFAULT_TICKER_MESSAGES];
+  } catch {
+    return [...DEFAULT_TICKER_MESSAGES];
+  }
+}
+
+function saveTickerMessages() {
+  localStorage.setItem(TICKER_MESSAGES_KEY, JSON.stringify(tickerState.items));
+}
+
+function animateTickerText() {
+  if (!tickerText) return;
+  const messageLength = tickerText.textContent.trim().length;
+  const durationSeconds = Math.max(10, Math.min(22, 8 + messageLength * 0.12));
+  tickerText.style.setProperty("--ticker-duration", `${durationSeconds}s`);
+  tickerText.classList.remove("is-animating");
+  void tickerText.offsetWidth;
+  tickerText.classList.add("is-animating");
+}
+
+function renderTicker() {
+  if (!tickerText) return;
+  const items = tickerState.items.length ? tickerState.items : DEFAULT_TICKER_MESSAGES;
+  const safeIndex = items.length ? tickerState.index % items.length : 0;
+  tickerText.textContent = items[safeIndex] || "Sin leyendas configuradas.";
+  animateTickerText();
+}
+
+function stopTickerRotation() {
+  if (tickerState.timerId) {
+    window.clearInterval(tickerState.timerId);
+    tickerState.timerId = 0;
+  }
+}
+
+function startTickerRotation() {
+  stopTickerRotation();
+  if (tickerState.items.length < 2) return;
+  tickerState.timerId = window.setInterval(() => {
+    tickerState.index = (tickerState.index + 1) % tickerState.items.length;
+    renderTicker();
+  }, TICKER_ROTATION_MS);
+}
+
+function syncTickerEditState() {
+  if (!newsRibbon || !tickerButton) return;
+  newsRibbon.classList.toggle("is-editable", prizeState.active);
+  tickerButton.disabled = !prizeState.active;
+  tickerButton.title = prizeState.active ? "Editar leyendas del ticker" : "Activa prize mode para editar las leyendas";
+}
+
+function captureTickerDraftValues() {
+  if (!tickerEditor) return;
+  const fields = [...tickerEditor.querySelectorAll("[data-ticker-line]")];
+  if (!fields.length) return;
+  tickerState.draftItems = fields.map((field) => field.value);
+}
+
+function renderTickerEditor() {
+  if (!tickerEditor) return;
+  const editorItems = tickerState.draftItems.length ? tickerState.draftItems : [""];
+  tickerEditor.innerHTML = editorItems.map((message, index) => `
+    <div class="ticker-field">
+      <div class="ticker-field-top">
+        <span class="ticker-field-label">Leyenda ${index + 1}</span>
+        ${editorItems.length > 1 ? `
+          <button class="edit-btn ticker-remove" type="button" data-remove-ticker-line="${index}" title="Eliminar leyenda">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        ` : `<span></span>`}
+      </div>
+      <textarea class="ticker-input" data-ticker-line="${index}" placeholder="Escribe una leyenda">${message}</textarea>
+    </div>
+  `).join("");
+
+  if (addTickerLineBtn) {
+    addTickerLineBtn.disabled = editorItems.length >= MAX_TICKER_LINES;
+  }
+}
+
+function openTickerEditor() {
+  if (!prizeState.active || !tickerModal) return;
+  tickerState.draftItems = [...tickerState.items];
+  renderTickerEditor();
+  tickerModal.classList.add("is-open");
+}
+
+function closeTickerEditor() {
+  tickerState.draftItems = [];
+  tickerModal?.classList.remove("is-open");
+}
 
 function loadPrizeAwards() {
   try {
@@ -126,8 +300,10 @@ function setPrizeMode(active) {
   if (!active) {
     prizeState.editorSlot = "";
     prizeState.draftAmount = "";
+    closeTickerEditor();
   }
   syncPrizeModeButton();
+  syncTickerEditState();
   renderPodium(prizeState.podiumRacers);
 }
 
@@ -135,6 +311,41 @@ function setActivePeriod(p) {
   [...periodSwitcher.querySelectorAll("[data-period]")].forEach((b) => {
     b.classList.toggle("is-active", b.dataset.period === p);
   });
+}
+
+function syncTeamsCompetitionControls() {
+  const teamsLocked = state.viewMode === "teams";
+
+  periodSwitcher?.querySelectorAll("[data-period]").forEach((button) => {
+    const isWeek = button.dataset.period === "week";
+    button.disabled = teamsLocked && !isWeek;
+    button.title = teamsLocked && !isWeek ? TEAMS_COMPETITION_HINT : "";
+  });
+
+  if (anchorDateInput) {
+    anchorDateInput.disabled = teamsLocked;
+    anchorDateInput.title = teamsLocked ? TEAMS_COMPETITION_HINT : "";
+  }
+}
+
+function setActiveViewMode(mode) {
+  const nextMode = mode === "teams" ? "teams" : "individual";
+
+  if (nextMode === "teams") {
+    if (state.viewMode !== "teams") state.individualPeriod = state.period;
+    state.viewMode = "teams";
+    state.period = "week";
+  } else {
+    state.viewMode = "individual";
+    state.period = state.individualPeriod || "day";
+  }
+
+  localStorage.setItem(VIEW_MODE_KEY, state.viewMode);
+  viewSwitcher?.querySelectorAll("[data-view]").forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.view === state.viewMode);
+  });
+  setActivePeriod(state.period);
+  syncTeamsCompetitionControls();
 }
 
 /* ══ Render: summary ══ */
@@ -166,7 +377,7 @@ function renderLeaderBanner(race) {
     <p class="leader-banner-meta">Lidera ${monthLabel}</p>`;
 }
 
-function renderTrack(racers, leaderCount) {
+function renderIndividualTrack(racers, leaderCount) {
   if (!racers.length) {
     track.innerHTML = `<div class="empty-state">No hay Ventas/Deals para ese corte.</div>`;
     return;
@@ -181,7 +392,7 @@ function renderTrack(racers, leaderCount) {
       const icon = racerIcon(r.agent, r.gender);
       const laneClass = r.rank === 1 ? "lane--gold" : r.rank === 2 ? "lane--silver" : r.rank === 3 ? "lane--bronze" : "";
       return `
-        <article class="lane ${laneClass}" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || 'transparent'}">
+        <article class="lane ${laneClass}" style="--progress:${Math.max(progress, 0.04)}; --hue:${r.colorHue}; --team-color:${r.teamColor || "transparent"}">
           <div class="lane-rank">
             <span class="rank-pill">${r.rank}</span>
             <div>
@@ -204,6 +415,61 @@ function renderTrack(racers, leaderCount) {
 
 /* ══ Render: team bar (vertical cards) ══ */
 
+function renderTeamTrack(race) {
+  const teams = buildTeamEntries(race);
+  if (!teams.length) {
+    track.innerHTML = `<div class="empty-state">No hay equipos activos para ese corte.</div>`;
+    return;
+  }
+
+  const totalTeamDeals = teams.reduce((sum, team) => sum + team.count, 0);
+
+  track.innerHTML = `
+    <div class="team-telemetry-grid">
+      ${teams.map((team) => {
+        const cardClass = team.rank === 1 ? "team-telemetry--gold" : team.rank === 2 ? "team-telemetry--silver" : team.rank === 3 ? "team-telemetry--bronze" : "";
+        const shareProgress = totalTeamDeals > 0 ? team.count / totalTeamDeals : 0;
+        const dialProgress = totalTeamDeals > 0 ? Math.max(shareProgress, 0.08) : 0;
+
+        return `
+          <article class="team-telemetry ${cardClass}" style="--team-color:${team.color}; --dial-progress:${dialProgress}">
+            <div class="team-telemetry-head">
+              <div class="team-rank-wrap">
+                <span class="team-rank-pill">${team.rank}</span>
+                <div>
+                  <div class="team-telemetry-name">${team.team}</div>
+                </div>
+              </div>
+              <div class="team-telemetry-score">
+                <strong>${formatNumber(team.count)} Deals</strong>
+                <span class="amount-green">${formatMoney(team.amount || 0)}</span>
+              </div>
+            </div>
+            <div class="team-dial">
+              <div class="team-dial-core">
+                <strong>${Math.round(shareProgress * 100)}%</strong>
+                <span>del total</span>
+              </div>
+            </div>
+            <div class="team-stats-row">
+              <div class="team-stat">
+                <span>Gap</span>
+                <strong>${team.gap === 0 ? "Lider" : `-${formatNumber(team.gap)}`}</strong>
+              </div>
+              <div class="team-stat">
+                <span>Top seller</span>
+                <strong>${team.topAgent ? formatShortName(team.topAgent) : "Sin actividad"}</strong>
+              </div>
+              <div class="team-stat">
+                <span>Deals best seller</span>
+                <strong>${formatNumber(team.topAgentCount)} deals</strong>
+              </div>
+            </div>
+          </article>`;
+      }).join("")}
+    </div>`;
+}
+
 function renderTeamBar(standings) {
   if (!standings || !standings.length) { teamBar.innerHTML = ""; return; }
 
@@ -222,6 +488,10 @@ function renderTeamBar(standings) {
 
 const podium = $("#podium");
 
+function getPodiumEntries(race) {
+  return state.viewMode === "teams" ? buildTeamEntries(race) : race.racers;
+}
+
 function renderPodium(racers) {
   prizeState.podiumRacers = racers.slice(0, 3);
 
@@ -231,9 +501,9 @@ function renderPodium(racers) {
   }
 
   const medals = [
-    { r: racers[1], cls: "silver", label: "Plata" },
-    { r: racers[0], cls: "gold",   label: "Oro" },
-    { r: racers[2], cls: "bronze", label: "Bronce" },
+    { r: racers[1], cls: "silver" },
+    { r: racers[0], cls: "gold" },
+    { r: racers[2], cls: "bronze" },
   ];
 
   podium.innerHTML = medals.map(({ r, cls }) => {
@@ -242,6 +512,13 @@ function renderPodium(racers) {
     const isEditing = prizeState.active && prizeState.editorSlot === cls;
     const hasPrize = Boolean(savedPrize || isEditing);
     const draftValue = isEditing ? prizeState.draftAmount : savedPrize ? String(savedPrize) : "";
+    const teamLeaderBadge = state.viewMode === "teams" && cls === "gold"
+      ? `
+        <div class="podium-team-badge">
+          <img src="/AvatarSBKS.png?v=20260316-1322" alt="Avatar del team lider" class="podium-team-badge-img" />
+        </div>
+      `
+      : "";
 
     const prizeMarkup = prizeState.active && isEditing
       ? `
@@ -276,13 +553,15 @@ function renderPodium(racers) {
       <div class="podium-card podium-card--${cls} ${hasPrize ? "podium-card--with-prize" : ""}">
         <div class="podium-main">
           <div class="podium-info">
-            <div class="podium-name">${r.agent}</div>
+            <div class="podium-name">${state.viewMode === "teams" ? r.team : r.agent}</div>
             <div class="podium-team">
-              <span class="podium-team-dot" style="background:${r.teamColor}"></span>
-              ${r.team}
+              <span class="podium-team-dot" style="background:${state.viewMode === "teams" ? r.color : r.teamColor}"></span>
+              ${state.viewMode === "teams" ? (r.supervisor || "Sin supervisor") : r.team}
             </div>
+            ${state.viewMode === "teams" ? "" : `<div class="podium-meta">${r.supervisor || r.team}</div>`}
           </div>
-          <div class="podium-score">${formatNumber(r.count)}</div>
+          <div class="podium-score ${state.viewMode === "teams" && cls === "gold" ? "podium-score--hero" : ""}">${formatNumber(r.count)}</div>
+          ${teamLeaderBadge}
         </div>
         ${prizeMarkup}
       </div>
@@ -292,7 +571,50 @@ function renderPodium(racers) {
 
 /* ══ Render: leaderboard ══ */
 
-function renderLeaderboard(racers) {
+function renderLeaderboard(race) {
+  if (state.viewMode === "teams") {
+    const teams = buildTeamEntries(race);
+    leaderboardEyebrow.textContent = "Clasificacion por equipo";
+    leaderboardTitle.textContent = "Tabla de equipos";
+    leaderboardHeadRow.innerHTML = `
+      <th>#</th>
+      <th>Equipo</th>
+      <th>Supervisor</th>
+      <th>Vendedores</th>
+      <th>Ventas/Deals</th>
+      <th>Gap</th>
+    `;
+
+    if (!teams.length) {
+      leaderboardBody.innerHTML = `<tr><td colspan="6">Sin equipos activos.</td></tr>`;
+      return;
+    }
+
+    leaderboardBody.innerHTML = teams
+      .map((team) => `
+        <tr>
+          <td data-label="Posicion">${team.rank}</td>
+          <td data-label="Equipo"><span class="badge"><span class="team-dot" style="background:${team.color}"></span>${team.team}</span></td>
+          <td data-label="Supervisor">${team.supervisor || "Sin supervisor"}</td>
+          <td data-label="Vendedores">${formatNumber(team.agents)}</td>
+          <td data-label="Ventas/Deals"><span class="amount-green">${formatNumber(team.count)}</span> · ${formatMoney(team.amount || 0)}</td>
+          <td data-label="Gap">${team.gap === 0 ? "Lider" : `-${formatNumber(team.gap)}`}</td>
+        </tr>`)
+      .join("");
+    return;
+  }
+
+  leaderboardEyebrow.textContent = "Clasificacion";
+  leaderboardTitle.textContent = "Tabla completa";
+  leaderboardHeadRow.innerHTML = `
+    <th>#</th>
+    <th>Vendedor</th>
+    <th>Equipo</th>
+    <th>Ventas/Deals</th>
+    <th>Deuda</th>
+    <th>Gap</th>
+  `;
+  const racers = race.racers;
   if (!racers.length) {
     leaderboardBody.innerHTML = `<tr><td colspan="6">Sin vendedores activos.</td></tr>`;
     return;
@@ -312,6 +634,17 @@ function renderLeaderboard(racers) {
 }
 
 /* ══ Team editor (drag & drop) ══ */
+
+function renderRaceView(race) {
+  if (state.viewMode === "teams") {
+    renderTeamTrack(race);
+  } else {
+    renderIndividualTrack(race.racers, race.leaderCount);
+  }
+
+  renderPodium(getPodiumEntries(race));
+  renderLeaderboard(race);
+}
 
 let editorTeams = {};
 let editorAssignments = {};
@@ -539,6 +872,72 @@ if (podium) {
   });
 }
 
+if (tickerButton) {
+  tickerButton.addEventListener("click", openTickerEditor);
+}
+
+if (closeTickerModalBtn) {
+  closeTickerModalBtn.addEventListener("click", closeTickerEditor);
+}
+
+if (tickerModal) {
+  tickerModal.addEventListener("click", (e) => {
+    if (e.target === tickerModal) closeTickerEditor();
+  });
+}
+
+if (tickerEditor) {
+  tickerEditor.addEventListener("input", () => {
+    captureTickerDraftValues();
+  });
+
+  tickerEditor.addEventListener("click", (e) => {
+    const removeButton = e.target.closest("[data-remove-ticker-line]");
+    if (!removeButton) return;
+    const index = Number(removeButton.dataset.removeTickerLine);
+    if (!Number.isInteger(index)) return;
+
+    captureTickerDraftValues();
+    const nextItems = tickerState.draftItems.filter((_, itemIndex) => itemIndex !== index);
+    tickerState.draftItems = nextItems.length ? nextItems : [""];
+    renderTickerEditor();
+  });
+}
+
+if (addTickerLineBtn) {
+  addTickerLineBtn.addEventListener("click", () => {
+    captureTickerDraftValues();
+    if (tickerState.draftItems.length >= MAX_TICKER_LINES) return;
+    tickerState.draftItems = [...tickerState.draftItems, ""];
+    renderTickerEditor();
+    requestAnimationFrame(() => {
+      const inputs = tickerEditor?.querySelectorAll("[data-ticker-line]");
+      inputs?.[inputs.length - 1]?.focus();
+    });
+  });
+}
+
+if (saveTickerLinesBtn) {
+  saveTickerLinesBtn.addEventListener("click", () => {
+    const nextItems = normalizeTickerMessages(
+      [...(tickerEditor?.querySelectorAll("[data-ticker-line]") || [])].map((field) => field.value),
+    );
+
+    if (!nextItems.length) {
+      window.alert("Agrega al menos una leyenda para el ticker");
+      tickerEditor?.querySelector("[data-ticker-line]")?.focus();
+      return;
+    }
+
+    tickerState.items = nextItems;
+    tickerState.index = tickerState.index % tickerState.items.length;
+    saveTickerMessages();
+    renderTicker();
+    startTickerRotation();
+    closeTickerEditor();
+  });
+}
+
 /* ══ Fetch ══ */
 
 function getFriendlyErrorMessage() {
@@ -546,8 +945,10 @@ function getFriendlyErrorMessage() {
 }
 
 async function loadRace(forceRefresh = false) {
-  const params = new URLSearchParams({ period: state.period });
+  const requestPeriod = state.viewMode === "teams" ? "week" : state.period;
+  const params = new URLSearchParams({ period: requestPeriod });
   if (state.anchorDate) params.set("anchor", state.anchorDate);
+  if (state.viewMode === "teams") params.set("view", "teams");
   if (forceRefresh) params.set("refresh", "1");
 
   track.innerHTML = `<div class="empty-state">Actualizando...</div>`;
@@ -564,23 +965,32 @@ async function loadRace(forceRefresh = false) {
     state.latestDate = meta.latestDate;
     state.earliestDate = meta.earliestDate;
     state.anchorDate = state.anchorDate || meta.latestDate;
+    state.latestRace = race;
 
     anchorDateInput.value = state.anchorDate;
     anchorDateInput.max = meta.latestDate;
     anchorDateInput.min = meta.earliestDate;
 
-    setActivePeriod(state.period);
+    setActiveViewMode(state.viewMode);
     renderSummary(meta, race);
     renderLeaderBanner(race);
-    renderTrack(race.racers, race.leaderCount);
     renderTeamBar(race.teamStandings);
-    renderPodium(race.racers);
-    renderLeaderboard(race.racers);
+    renderRaceView(race);
   } catch (err) {
     const friendlyMessage = getFriendlyErrorMessage(err);
     console.error("Error loading race:", err);
     track.innerHTML = `<div class="empty-state">${friendlyMessage}</div>`;
     leaderBanner.innerHTML = `<p class="leader-banner-label">Escuderia puntera</p><div class="leader-banner-main">Ups</div><p class="leader-banner-meta">${friendlyMessage}</p>`;
+    leaderboardEyebrow.textContent = "Clasificacion";
+    leaderboardTitle.textContent = "Tabla completa";
+    leaderboardHeadRow.innerHTML = `
+      <th>#</th>
+      <th>Vendedor</th>
+      <th>Equipo</th>
+      <th>Ventas/Deals</th>
+      <th>Deuda</th>
+      <th>Gap</th>
+    `;
     leaderboardBody.innerHTML = `<tr><td colspan="6">${friendlyMessage}</td></tr>`;
   }
 }
@@ -589,8 +999,16 @@ async function loadRace(forceRefresh = false) {
 
 periodSwitcher.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-period]");
-  if (!btn) return;
+  if (!btn || btn.disabled) return;
+  state.individualPeriod = btn.dataset.period;
   state.period = btn.dataset.period;
+  loadRace();
+});
+
+viewSwitcher?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-view]");
+  if (!btn) return;
+  setActiveViewMode(btn.dataset.view);
   loadRace();
 });
 
@@ -653,4 +1071,8 @@ if (inboundCompetitionButton) {
   setTimeout(runBurst, 3000);
 })();
 
+tickerState.items = loadTickerMessages();
+renderTicker();
+startTickerRotation();
+syncTickerEditState();
 loadRace();
