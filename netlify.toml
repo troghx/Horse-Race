@@ -25,3 +25,8 @@
   from = "/api/tug-stakes"
   to = "/.netlify/functions/api-tug-stakes"
   status = 200
+
+[[redirects]]
+  from = "/api/inbound"
+  to = "/.netlify/functions/api-inbound"
+  status = 200

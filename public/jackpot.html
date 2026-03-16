@@ -2186,34 +2186,6 @@
           if (!res.ok) throw new Error(data.error);
           writeCache(JACKPOT_CACHE_KEY, data);
           applyJackpotPayload(data);
-          return;
-
-          const { totalAmount, goal, month, totalDeals, activeAgents, tugOfWar } = data;
-          const pct = Math.min(totalAmount / goal, 1);
-
-          if (jpMonth) jpMonth.textContent = formatMonthYear(month);
-          amountPct.textContent = (pct * 100).toFixed(1) + "% del Jackpot";
-          amountMeta.textContent = `${totalDeals} ventas/deals · ${activeAgents} vendedores`;
-
-          // Fill thermometer with delay for visual effect
-          setTimeout(() => {
-            setThermoLevel(pct);
-          }, 300);
-
-          updateTicks(totalAmount);
-          animateCount(totalAmount);
-
-          // Dynamic coins — more coins as percentage rises
-          updateCoinCount(pct);
-
-          // Update tug of war with real gender data
-          if (tugOfWar) {
-            tugOfWarState.boys = tugOfWar.boys;
-            tugOfWarState.girls = tugOfWar.girls;
-            renderTugOfWar();
-          }
-
-          if (pct >= 1) launchConfetti();
         } catch (err) {
           console.error("Error loading jackpot:", err);
           const cached = readCache(JACKPOT_CACHE_KEY);
