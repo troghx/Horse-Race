@@ -30,3 +30,8 @@
   from = "/api/inbound"
   to = "/.netlify/functions/api-inbound"
   status = 200
+
+[[redirects]]
+  from = "/api/ticker"
+  to = "/.netlify/functions/api-ticker"
+  status = 200

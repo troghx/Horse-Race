@@ -3,13 +3,16 @@ import { readFile } from "node:fs/promises";
 import { createGzip } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import seedTickerConfig from "./data/ticker.json" with { type: "json" };
 
 import {
-  createFileTeamStore,
+  createFileJsonStore,
   createInboundPayload,
   createJackpotPayload,
   createRacePayload,
+  createTickerPayload,
   createTeamsPayload,
+  saveTickerMessages,
   saveTeamAssignments,
 } from "./lib/race-service.js";
 
@@ -17,6 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, "public");
 const teamsFile = path.join(__dirname, "data", "teams.json");
+const tickerFile = path.join(__dirname, "data", "ticker.json");
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -30,7 +34,8 @@ const mimeTypes = {
   ".ico": "image/x-icon",
 };
 
-const teamStore = createFileTeamStore(teamsFile);
+const teamStore = createFileJsonStore(teamsFile);
+const tickerStore = createFileJsonStore(tickerFile);
 
 const COMPRESSIBLE = new Set([".html", ".css", ".js", ".json", ".svg"]);
 
@@ -63,6 +68,16 @@ function getBody(req) {
     req.on("end", () => resolve(Buffer.concat(chunks).toString("utf-8")));
     req.on("error", reject);
   });
+}
+
+function getErrorStatus(error) {
+  return Number(error?.statusCode) || 500;
+}
+
+function getErrorBody(error) {
+  const body = { error: error?.message || "Error interno" };
+  if (error?.details) body.current = error.details;
+  return body;
 }
 
 async function handleApiRace(url, req, res) {
@@ -107,6 +122,35 @@ async function handleTeamsPost(req, res) {
     sendJson(res, 200, payload);
   } catch (error) {
     sendJson(res, 500, { error: error.message });
+  }
+}
+
+async function handleTickerGet(req, res) {
+  try {
+    const payload = await createTickerPayload({
+      tickerStore,
+      seedConfig: seedTickerConfig,
+    });
+
+    sendJson(res, 200, payload, req);
+  } catch (error) {
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
+  }
+}
+
+async function handleTickerPost(req, res) {
+  try {
+    const body = JSON.parse(await getBody(req));
+    const payload = await saveTickerMessages({
+      items: body?.items,
+      baseVersion: body?.baseVersion,
+      tickerStore,
+      seedConfig: seedTickerConfig,
+    });
+
+    sendJson(res, 200, payload, req);
+  } catch (error) {
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
   }
 }
 
@@ -181,6 +225,10 @@ const server = createServer(async (req, res) => {
 
   if (url.pathname === "/api/teams") {
     return req.method === "POST" ? handleTeamsPost(req, res) : handleTeamsGet(req, res);
+  }
+
+  if (url.pathname === "/api/ticker") {
+    return req.method === "POST" ? handleTickerPost(req, res) : handleTickerGet(req, res);
   }
 
   await serveStatic(url.pathname === "/" ? "/" : decodeURIComponent(url.pathname), req, res);

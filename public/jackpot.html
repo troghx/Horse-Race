@@ -1608,6 +1608,77 @@
         font-size: 0.8rem;
       }
 
+      .inbound-empty--loading {
+        display: grid;
+        place-items: center;
+        gap: 0.65rem;
+        min-height: 8.5rem;
+        color: rgba(255,255,255,0.68);
+      }
+
+      .inbound-loading-sun {
+        position: relative;
+        width: 2.8rem;
+        height: 2.8rem;
+        border-radius: 50%;
+        background:
+          radial-gradient(circle at 32% 32%, rgba(255,255,255,0.85) 0 16%, rgba(255,255,255,0) 17%),
+          radial-gradient(circle, #ffe38a 0 34%, #ffb300 55%, #ff7a00 100%);
+        box-shadow:
+          0 0 0 0.18rem rgba(255,191,0,0.12),
+          0 0 1.4rem rgba(255,170,0,0.35);
+        animation: inbound-sun-pulse 1.9s ease-in-out infinite;
+      }
+
+      .inbound-loading-sun::before {
+        content: "";
+        position: absolute;
+        inset: -0.75rem;
+        border-radius: 50%;
+        background:
+          conic-gradient(
+            from 0deg,
+            rgba(255,204,0,0.95) 0deg 14deg,
+            transparent 14deg 45deg,
+            rgba(255,153,0,0.8) 45deg 59deg,
+            transparent 59deg 90deg,
+            rgba(255,204,0,0.95) 90deg 104deg,
+            transparent 104deg 135deg,
+            rgba(255,153,0,0.8) 135deg 149deg,
+            transparent 149deg 180deg,
+            rgba(255,204,0,0.95) 180deg 194deg,
+            transparent 194deg 225deg,
+            rgba(255,153,0,0.8) 225deg 239deg,
+            transparent 239deg 270deg,
+            rgba(255,204,0,0.95) 270deg 284deg,
+            transparent 284deg 315deg,
+            rgba(255,153,0,0.8) 315deg 329deg,
+            transparent 329deg 360deg
+          );
+        -webkit-mask: radial-gradient(circle, transparent 0 58%, black 60%);
+        mask: radial-gradient(circle, transparent 0 58%, black 60%);
+        animation: inbound-sun-spin 5.5s linear infinite;
+        opacity: 0.95;
+      }
+
+      .inbound-empty-label {
+        font-size: 0.76rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: rgba(255,255,255,0.7);
+      }
+
+      @keyframes inbound-sun-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+
+      @keyframes inbound-sun-pulse {
+        0%, 100% { transform: scale(1); filter: saturate(1); }
+        50% { transform: scale(0.94); filter: saturate(1.18); }
+      }
+
       @media (max-width: 720px) {
         .inbound-section { padding: 2rem 0.75rem 3rem; }
         .inbound-inner { width: 100%; }
@@ -1626,8 +1697,11 @@
 
       @media (prefers-reduced-motion: reduce) {
         .reveal,
-        .battle-bar span {
+        .battle-bar span,
+        .inbound-loading-sun,
+        .inbound-loading-sun::before {
           transition: none;
+          animation: none;
         }
       }
     </style>
@@ -1760,7 +1834,10 @@
               <p class="inbound-lane-name">EComfy / NBTV</p>
             </div>
             <div class="inbound-lane-list" id="inboundEcomfy">
-              <div class="inbound-empty">Sin datos aun.</div>
+              <div class="inbound-empty inbound-empty--loading">
+                <span class="inbound-loading-sun" aria-hidden="true"></span>
+                <span class="inbound-empty-label">Cargando vendedores</span>
+              </div>
             </div>
           </div>
 
@@ -1771,7 +1848,10 @@
               <p class="inbound-lane-name">Radio</p>
             </div>
             <div class="inbound-lane-list" id="inboundRadio">
-              <div class="inbound-empty">Sin datos aun.</div>
+              <div class="inbound-empty inbound-empty--loading">
+                <span class="inbound-loading-sun" aria-hidden="true"></span>
+                <span class="inbound-empty-label">Cargando vendedores</span>
+              </div>
             </div>
           </div>
 
@@ -1782,7 +1862,10 @@
               <p class="inbound-lane-name">Social</p>
             </div>
             <div class="inbound-lane-list" id="inboundAtmedia">
-              <div class="inbound-empty">Sin datos aun.</div>
+              <div class="inbound-empty inbound-empty--loading">
+                <span class="inbound-loading-sun" aria-hidden="true"></span>
+                <span class="inbound-empty-label">Cargando vendedores</span>
+              </div>
             </div>
           </div>
         </div>
@@ -2091,6 +2174,24 @@
 
       const SPLIT_THRESHOLD = 16;
 
+      function getInboundLoadingMarkup() {
+        return `
+          <div class="inbound-empty inbound-empty--loading">
+            <span class="inbound-loading-sun" aria-hidden="true"></span>
+            <span class="inbound-empty-label">Cargando vendedores</span>
+          </div>
+        `;
+      }
+
+      function setInboundLoadingState() {
+        CAMPAIGN_LANES.forEach(({ el }) => {
+          if (!el) return;
+          el.classList.remove("is-split");
+          el.style.maxHeight = "";
+          el.innerHTML = getInboundLoadingMarkup();
+        });
+      }
+
       function renderInboundLane(el, agents, campaignKey) {
         if (!el) return;
 
@@ -2150,14 +2251,18 @@
       }
 
       async function loadInboundCompetition() {
+        setInboundLoadingState();
         try {
           const res = await fetch("/api/inbound");
           const data = await res.json();
           if (res.ok && data.agents) {
             renderInboundCompetition(data.agents);
+            return;
           }
+          renderInboundCompetition([]);
         } catch (err) {
           console.error("Error loading inbound competition:", err);
+          renderInboundCompetition([]);
         }
       }
 

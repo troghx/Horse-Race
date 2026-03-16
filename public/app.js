@@ -39,8 +39,10 @@ const prizeModeButton = $("#prizeModeButton");
 const TEAM_EDITOR_PIN = "75572144";
 const VIEW_MODE_KEY = "grand_prix_view_mode_v1";
 const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
-const TICKER_MESSAGES_KEY = "grand_prix_ticker_messages_v1";
-const TICKER_ROTATION_MS = 7000;
+const TICKER_GAP_MS = 900;
+const TICKER_SPEED_PX_PER_SEC = 160;
+const TICKER_SYNC_MS = 15000;
+const TICKER_REQUEST_TIMEOUT_MS = 12000;
 const MAX_TICKER_LINES = 10;
 const TEAMS_COMPETITION_START = "2026-03-16";
 const TEAMS_COMPETITION_END = "2026-03-19";
@@ -65,6 +67,12 @@ const tickerState = {
   draftItems: [],
   index: 0,
   timerId: 0,
+  syncTimerId: 0,
+  syncPromise: null,
+  version: 0,
+  updatedAt: "",
+  pendingPayload: null,
+  currentDurationMs: 0,
 };
 
 /* ══ Theme ══ */
@@ -154,28 +162,158 @@ function normalizeTickerMessages(messages) {
     .slice(0, MAX_TICKER_LINES);
 }
 
-function loadTickerMessages() {
+function areTickerMessagesEqual(left, right) {
+  if (left.length !== right.length) return false;
+  return left.every((message, index) => message === right[index]);
+}
+
+function normalizeTickerPayload(payload) {
+  const items = normalizeTickerMessages(payload?.items);
+  const parsedVersion = Number(payload?.version);
+
+  return {
+    items: items.length ? items : [...DEFAULT_TICKER_MESSAGES],
+    version: Number.isFinite(parsedVersion) && parsedVersion > 0 ? parsedVersion : 0,
+    updatedAt: typeof payload?.updatedAt === "string" ? payload.updatedAt : "",
+  };
+}
+
+function applyTickerPayload(payload, { preserveIndex = true } = {}) {
+  const normalized = normalizeTickerPayload(payload);
+  const previousItems = tickerState.items.length ? tickerState.items : [...DEFAULT_TICKER_MESSAGES];
+  const previousMessage = previousItems[tickerState.index] || "";
+
+  tickerState.items = normalized.items;
+  tickerState.version = normalized.version;
+  tickerState.updatedAt = normalized.updatedAt;
+  tickerState.pendingPayload = null;
+
+  if (preserveIndex && previousMessage) {
+    const nextIndex = tickerState.items.indexOf(previousMessage);
+    tickerState.index = nextIndex === -1 ? 0 : nextIndex;
+  } else {
+    tickerState.index = 0;
+  }
+
+  renderTicker();
+  startTickerRotation();
+}
+
+async function requestTicker({ method = "GET", body } = {}) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), TICKER_REQUEST_TIMEOUT_MS);
+
   try {
-    const stored = JSON.parse(localStorage.getItem(TICKER_MESSAGES_KEY) || "[]");
-    const normalized = normalizeTickerMessages(stored);
-    return normalized.length ? normalized : [...DEFAULT_TICKER_MESSAGES];
-  } catch {
-    return [...DEFAULT_TICKER_MESSAGES];
+    const response = await fetch("/api/ticker", {
+      method,
+      headers: body ? { "Content-Type": "application/json" } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const error = new Error(payload.error || "Error al sincronizar el ticker");
+      error.statusCode = response.status;
+      error.current = payload.current || null;
+      throw error;
+    }
+
+    return payload;
+  } finally {
+    window.clearTimeout(timeoutId);
   }
 }
 
-function saveTickerMessages() {
-  localStorage.setItem(TICKER_MESSAGES_KEY, JSON.stringify(tickerState.items));
+async function syncTickerFromServer({ force = false } = {}) {
+  if (tickerState.syncPromise) return tickerState.syncPromise;
+
+  const task = (async () => {
+    try {
+      const payload = normalizeTickerPayload(await requestTicker());
+      const hasChanged =
+        payload.version !== tickerState.version ||
+        !areTickerMessagesEqual(payload.items, tickerState.items);
+
+      if (!hasChanged) return payload;
+
+      if (!force && tickerModal?.classList.contains("is-open")) {
+        tickerState.pendingPayload = payload;
+        return payload;
+      }
+
+      applyTickerPayload(payload, { preserveIndex: true });
+      return payload;
+    } catch (error) {
+      console.error("Error syncing ticker:", error);
+      return null;
+    }
+  })();
+
+  tickerState.syncPromise = task;
+
+  try {
+    return await task;
+  } finally {
+    if (tickerState.syncPromise === task) tickerState.syncPromise = null;
+  }
+}
+
+async function persistTickerMessages(items) {
+  const payload = await requestTicker({
+    method: "POST",
+    body: {
+      items,
+      baseVersion: tickerState.version,
+    },
+  });
+
+  applyTickerPayload(payload, { preserveIndex: false });
+  return payload;
+}
+
+function stopTickerSync() {
+  if (tickerState.syncTimerId) {
+    window.clearInterval(tickerState.syncTimerId);
+    tickerState.syncTimerId = 0;
+  }
+}
+
+function startTickerSync() {
+  stopTickerSync();
+  tickerState.syncTimerId = window.setInterval(() => {
+    if (document.hidden) return;
+    syncTickerFromServer();
+  }, TICKER_SYNC_MS);
+}
+
+function flushPendingTickerPayload() {
+  if (!tickerState.pendingPayload) return;
+  const payload = tickerState.pendingPayload;
+  tickerState.pendingPayload = null;
+  applyTickerPayload(payload, { preserveIndex: true });
 }
 
 function animateTickerText() {
   if (!tickerText) return;
-  const messageLength = tickerText.textContent.trim().length;
-  const durationSeconds = Math.max(10, Math.min(22, 8 + messageLength * 0.12));
+  const tickerViewport = tickerText.closest(".news-ribbon-viewport");
+  const viewportWidth = tickerViewport?.clientWidth || tickerText.parentElement?.clientWidth || 0;
+  const messageWidth = tickerText.scrollWidth || tickerText.getBoundingClientRect().width || 0;
+  const fadeEdge = Math.max(18, Math.min(48, viewportWidth * 0.025));
+  const travelDistance = viewportWidth + messageWidth + fadeEdge * 2;
+  const durationSeconds = Math.max(8, Math.min(24, travelDistance / TICKER_SPEED_PX_PER_SEC));
+  const startOffset = viewportWidth + fadeEdge;
+  const endOffset = -(messageWidth + fadeEdge);
+
   tickerText.style.setProperty("--ticker-duration", `${durationSeconds}s`);
+  tickerText.style.setProperty("--ticker-start-offset", `${startOffset}px`);
+  tickerText.style.setProperty("--ticker-end-offset", `${endOffset}px`);
+  tickerViewport?.style.setProperty("--ticker-fade-edge", `${fadeEdge}px`);
   tickerText.classList.remove("is-animating");
   void tickerText.offsetWidth;
   tickerText.classList.add("is-animating");
+  tickerState.currentDurationMs = Math.round(durationSeconds * 1000);
+  return tickerState.currentDurationMs;
 }
 
 function renderTicker() {
@@ -188,7 +326,7 @@ function renderTicker() {
 
 function stopTickerRotation() {
   if (tickerState.timerId) {
-    window.clearInterval(tickerState.timerId);
+    window.clearTimeout(tickerState.timerId);
     tickerState.timerId = 0;
   }
 }
@@ -196,11 +334,32 @@ function stopTickerRotation() {
 function startTickerRotation() {
   stopTickerRotation();
   if (tickerState.items.length < 2) return;
-  tickerState.timerId = window.setInterval(() => {
-    tickerState.index = (tickerState.index + 1) % tickerState.items.length;
-    renderTicker();
-  }, TICKER_ROTATION_MS);
+
+  const scheduleNextRotation = () => {
+    const waitTime = Math.max((tickerState.currentDurationMs || 0) + TICKER_GAP_MS, 3000);
+    tickerState.timerId = window.setTimeout(() => {
+      if (tickerState.items.length < 2) {
+        tickerState.timerId = 0;
+        return;
+      }
+
+      tickerState.index = (tickerState.index + 1) % tickerState.items.length;
+      renderTicker();
+      scheduleNextRotation();
+    }, waitTime);
+  };
+
+  scheduleNextRotation();
 }
+
+let tickerResizeTimerId = 0;
+window.addEventListener("resize", () => {
+  if (tickerResizeTimerId) window.clearTimeout(tickerResizeTimerId);
+  tickerResizeTimerId = window.setTimeout(() => {
+    renderTicker();
+    startTickerRotation();
+  }, 120);
+});
 
 function syncTickerEditState() {
   if (!newsRibbon || !tickerButton) return;
@@ -251,6 +410,7 @@ function openTickerEditor() {
 function closeTickerEditor() {
   tickerState.draftItems = [];
   tickerModal?.classList.remove("is-open");
+  flushPendingTickerPayload();
 }
 
 function loadPrizeAwards() {
@@ -918,7 +1078,7 @@ if (addTickerLineBtn) {
 }
 
 if (saveTickerLinesBtn) {
-  saveTickerLinesBtn.addEventListener("click", () => {
+  saveTickerLinesBtn.addEventListener("click", async () => {
     const nextItems = normalizeTickerMessages(
       [...(tickerEditor?.querySelectorAll("[data-ticker-line]") || [])].map((field) => field.value),
     );
@@ -929,12 +1089,26 @@ if (saveTickerLinesBtn) {
       return;
     }
 
-    tickerState.items = nextItems;
-    tickerState.index = tickerState.index % tickerState.items.length;
-    saveTickerMessages();
-    renderTicker();
-    startTickerRotation();
-    closeTickerEditor();
+    const originalLabel = saveTickerLinesBtn.textContent;
+    saveTickerLinesBtn.disabled = true;
+    saveTickerLinesBtn.textContent = "Guardando...";
+
+    try {
+      await persistTickerMessages(nextItems);
+      closeTickerEditor();
+    } catch (error) {
+      console.error("Error saving ticker:", error);
+
+      if (error.statusCode === 409 && error.current) {
+        applyTickerPayload(error.current, { preserveIndex: true });
+        window.alert("El ticker cambio en otro navegador. Ya cargue la version mas reciente para que puedas revisar y volver a guardar.");
+      } else {
+        window.alert("No se pudieron guardar las leyendas del ticker.");
+      }
+    } finally {
+      saveTickerLinesBtn.disabled = false;
+      saveTickerLinesBtn.textContent = originalLabel;
+    }
   });
 }
 
@@ -1071,8 +1245,14 @@ if (inboundCompetitionButton) {
   setTimeout(runBurst, 3000);
 })();
 
-tickerState.items = loadTickerMessages();
-renderTicker();
-startTickerRotation();
+applyTickerPayload({ items: DEFAULT_TICKER_MESSAGES, version: 0 }, { preserveIndex: false });
+startTickerSync();
 syncTickerEditState();
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) syncTickerFromServer();
+});
+window.addEventListener("focus", () => {
+  syncTickerFromServer();
+});
+syncTickerFromServer({ force: true });
 loadRace();
