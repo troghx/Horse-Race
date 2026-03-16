@@ -1392,6 +1392,7 @@
         flex-direction: column;
         gap: 0;
         padding: 0 0.4rem;
+        overflow: hidden;
       }
 
       .inbound-lane-head {
@@ -1642,13 +1643,6 @@
     </main>
 
     <section class="inbound-section" id="inbound">
-      <div class="inbound-curtain">
-        <div class="inbound-curtain-content">
-          <span class="inbound-curtain-title">Proximamente</span>
-          <p class="inbound-curtain-sub">Un evento donde cada venta en una campaña sube tu nivel. Demuestra en qué canal eres el mejor.</p>
-        </div>
-      </div>
-
       <div class="inbound-bg-campaigns">
         <span class="inbound-bg-label inbound-bg-label--ecomfy">EComfy</span>
         <span class="inbound-bg-label inbound-bg-label--radio">Radio</span>
@@ -1659,7 +1653,6 @@
         <div class="inbound-header reveal">
           <p class="inbound-kicker">Grand Prix Event</p>
           <h2 class="inbound-title">Inbound Competition</h2>
-          <p class="inbound-subtitle">Cada venta en una campaña sube tu nivel. Demuestra en qué canal eres el mejor.</p>
         </div>
 
         <div class="inbound-lanes reveal" id="inboundLanes">
@@ -1704,10 +1697,10 @@
       const STEPS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000];
       const JACKPOT_CACHE_KEY = "grand_prix_jackpot_cache_v1";
       const STAKES_CACHE_KEY = "grand_prix_tug_stakes_v1";
-      const TUG_EVENT_COUNTDOWN_AT = "2026-03-16T08:25:00-06:00";
-      const TUG_EVENT_START_AT = "2026-03-16T08:30:00-06:00";
-      const TUG_EVENT_END_AT = "2026-03-22T21:00:00-06:00";
-      const TUG_EVENT_TIMEZONE = "America/Mexico_City";
+      const TUG_EVENT_COUNTDOWN_AT = "2026-03-16T08:25:00-05:00";
+      const TUG_EVENT_START_AT = "2026-03-16T08:30:00-05:00";
+      const TUG_EVENT_END_AT = "2026-03-22T21:00:00-05:00";
+      const TUG_EVENT_TIMEZONE = "America/Cancun";
       const tugOfWarState = {
         boys: 0,
         girls: 0,
@@ -1989,7 +1982,7 @@
         { key: "atmedia", el: inboundAtmedia },
       ];
 
-      const SPLIT_THRESHOLD = 13;
+      const SPLIT_THRESHOLD = 16;
 
       function renderInboundLane(el, agents, campaignKey) {
         if (!el) return;
