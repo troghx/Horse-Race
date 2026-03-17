@@ -35,3 +35,13 @@
   from = "/api/ticker"
   to = "/.netlify/functions/api-ticker"
   status = 200
+
+[[redirects]]
+  from = "/api/admin/session"
+  to = "/.netlify/functions/api-admin-session"
+  status = 200
+
+[[redirects]]
+  from = "/api/prize-mode"
+  to = "/.netlify/functions/api-prize-mode"
+  status = 200

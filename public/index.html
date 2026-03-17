@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260316-ticker-motion-1" />
+    <link rel="stylesheet" href="/styles.css?v=20260317-admin-2" />
   </head>
   <body>
     <main class="shell">
@@ -48,6 +48,9 @@
             <input id="anchorDate" type="date" class="date-input" />
           </div>
           <div class="topbar-actions">
+            <button class="icon-btn" id="adminAccessButton" type="button" title="Administracion" aria-label="Administracion">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 4.5-2.9 7.8-7 9-4.1-1.2-7-4.5-7-9V7l7-4Z"/><path d="M9.5 12.5 11 14l3.5-3.5"/></svg>
+            </button>
             <button class="icon-btn" id="refreshButton" type="button" title="Actualizar">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.636-6.364"/><polyline points="21 3 21 9 15 9"/></svg>
             </button>
@@ -75,7 +78,7 @@
       <div class="status-marquee">
         <p class="range-note" id="rangeLabel"></p>
         <section class="news-ribbon" id="newsRibbon">
-          <button class="news-ribbon-btn" id="tickerButton" type="button" title="Activa prize mode para editar las leyendas">
+          <button class="news-ribbon-btn" id="tickerButton" type="button" title="Ticker en vivo">
             <span class="news-ribbon-label">Ultima hora</span>
             <span class="news-ribbon-live" aria-hidden="true"></span>
             <span class="news-ribbon-viewport" aria-live="polite">
@@ -105,9 +108,6 @@
           <div class="sidebar-block">
             <div class="sidebar-head">
               <p class="eyebrow">Equipos</p>
-              <button class="edit-btn" id="editTeamsBtn" type="button" title="Editar equipos">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-              </button>
             </div>
             <div class="team-cards" id="teamBar"></div>
           </div>
@@ -142,38 +142,35 @@
 
     </main>
 
-    <!-- Team editor modal -->
-    <div class="modal-overlay" id="teamModal">
-      <div class="modal-card">
+    <div class="modal-overlay" id="adminAuthModal" aria-hidden="true">
+      <div class="modal-card modal-card--compact modal-card--narrow">
         <div class="modal-top">
-          <h2>Editar equipos</h2>
-          <button class="icon-btn" id="closeModal" type="button" title="Cerrar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <div class="modal-copy">
+            <p class="eyebrow">Acceso</p>
+            <h2 id="adminAuthTitle">Acceso admin</h2>
+            <p class="modal-note" id="adminAuthDescription">Ingresa el codigo de administracion para continuar.</p>
+          </div>
+          <button class="icon-btn" id="adminAuthClose" type="button" aria-label="Cerrar acceso admin">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
-        <div class="team-editor" id="teamEditor"></div>
-        <div class="modal-bottom">
-          <button class="accent-btn" id="saveTeams" type="button">Guardar cambios</button>
-        </div>
+        <form class="admin-auth-form" id="adminAuthForm">
+          <label class="admin-auth-field" for="adminPinInput">
+            <span>Codigo admin</span>
+            <input class="admin-auth-input" id="adminPinInput" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="Ingresa el codigo" />
+          </label>
+          <p class="admin-auth-feedback" id="adminAuthFeedback"></p>
+          <div class="modal-bottom modal-bottom--split">
+            <button class="ghost-btn" id="adminAuthCancel" type="button">Cancelar</button>
+            <button class="accent-btn" id="adminAuthSubmit" type="submit">Continuar</button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <div class="modal-overlay" id="tickerModal">
-      <div class="modal-card modal-card--compact">
-        <div class="modal-top">
-          <h2>Editar leyendas del ticker</h2>
-          <button class="icon-btn" id="closeTickerModal" type="button" title="Cerrar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-        </div>
-        <div class="ticker-editor" id="tickerEditor"></div>
-        <div class="modal-bottom modal-bottom--split">
-          <button class="ghost-btn" id="addTickerLine" type="button">Agregar linea</button>
-          <button class="accent-btn" id="saveTickerLines" type="button">Guardar leyendas</button>
-        </div>
-      </div>
-    </div>
-
-    <script type="module" src="/app.js?v=20260316-ticker-motion-1"></script>
+    <script type="module" src="/app.js?v=20260317-admin-3"></script>
   </body>
 </html>

@@ -1,4 +1,5 @@
 import seedTeamConfig from "../../data/teams.json" with { type: "json" };
+import { assertAdminPin, readAdminPinFromWebRequest } from "../../lib/admin-auth.js";
 
 import {
   createTeamsPayload,
@@ -10,6 +11,7 @@ import { createBlobTeamStore } from "../../lib/netlify-team-store.js";
 export default async (request) => {
   try {
     const teamStore = createBlobTeamStore();
+    assertAdminPin(readAdminPinFromWebRequest(request));
 
     if (request.method === "POST") {
       const body = await request.json();
@@ -31,6 +33,6 @@ export default async (request) => {
 
     return jsonResponse(200, payload);
   } catch (error) {
-    return jsonResponse(500, { error: error.message });
+    return jsonResponse(Number(error?.statusCode) || 500, { error: error.message });
   }
 };

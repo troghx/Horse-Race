@@ -1,6 +1,6 @@
 import seedTeamConfig from "../../data/teams.json" with { type: "json" };
 
-import { createRacePayload, jsonResponse } from "../../lib/race-service.js";
+import { createRacePayload, jsonResponse, SHEET_API_CACHE_CONTROL } from "../../lib/race-service.js";
 import { createBlobTeamStore } from "../../lib/netlify-team-store.js";
 
 export default async (request) => {
@@ -17,7 +17,7 @@ export default async (request) => {
       seedConfig: seedTeamConfig,
     });
 
-    return jsonResponse(200, payload);
+    return jsonResponse(200, payload, { cacheControl: SHEET_API_CACHE_CONTROL });
   } catch (error) {
     return jsonResponse(500, { error: error.message });
   }

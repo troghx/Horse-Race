@@ -3,15 +3,20 @@ import { readFile } from "node:fs/promises";
 import { createGzip } from "node:zlib";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import seedPrizeModeConfig from "./data/prize-mode.json" with { type: "json" };
 import seedTickerConfig from "./data/ticker.json" with { type: "json" };
+import { assertAdminPin, readAdminPinFromNodeRequest } from "./lib/admin-auth.js";
 
 import {
   createFileJsonStore,
+  createPrizeModePayload,
   createInboundPayload,
   createJackpotPayload,
   createRacePayload,
   createTickerPayload,
   createTeamsPayload,
+  SHEET_API_CACHE_CONTROL,
+  savePrizeModeConfig,
   saveTickerMessages,
   saveTeamAssignments,
 } from "./lib/race-service.js";
@@ -21,6 +26,7 @@ const __dirname = path.dirname(__filename);
 const publicDir = path.join(__dirname, "public");
 const teamsFile = path.join(__dirname, "data", "teams.json");
 const tickerFile = path.join(__dirname, "data", "ticker.json");
+const prizeModeFile = path.join(__dirname, "data", "prize-mode.json");
 
 const PORT = Number(process.env.PORT || 3000);
 
@@ -36,18 +42,20 @@ const mimeTypes = {
 
 const teamStore = createFileJsonStore(teamsFile);
 const tickerStore = createFileJsonStore(tickerFile);
+const prizeModeStore = createFileJsonStore(prizeModeFile);
 
 const COMPRESSIBLE = new Set([".html", ".css", ".js", ".json", ".svg"]);
 
-function sendJson(res, status, body, req) {
+function sendJson(res, status, body, req, options = {}) {
   const json = JSON.stringify(body);
   const acceptGzip = req && String(req.headers["accept-encoding"] || "").includes("gzip");
+  const cacheControl = options.cacheControl || "no-store";
 
   if (acceptGzip && json.length > 1024) {
     res.writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
       "Content-Encoding": "gzip",
-      "Cache-Control": "no-store",
+      "Cache-Control": cacheControl,
     });
     const gz = createGzip();
     gz.pipe(res);
@@ -55,7 +63,7 @@ function sendJson(res, status, body, req) {
   } else {
     res.writeHead(status, {
       "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
+      "Cache-Control": cacheControl,
     });
     res.end(json);
   }
@@ -91,7 +99,7 @@ async function handleApiRace(url, req, res) {
       sheetUrl: process.env.SHEET_URL,
     });
 
-    sendJson(res, 200, payload, req);
+    sendJson(res, 200, payload, req, { cacheControl: SHEET_API_CACHE_CONTROL });
   } catch (error) {
     sendJson(res, 500, { error: error.message });
   }
@@ -99,6 +107,7 @@ async function handleApiRace(url, req, res) {
 
 async function handleTeamsGet(req, res) {
   try {
+    assertAdminPin(readAdminPinFromNodeRequest(req));
     const payload = await createTeamsPayload({
       teamStore,
       sheetUrl: process.env.SHEET_URL,
@@ -106,12 +115,13 @@ async function handleTeamsGet(req, res) {
 
     sendJson(res, 200, payload, req);
   } catch (error) {
-    sendJson(res, 500, { error: error.message });
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
   }
 }
 
 async function handleTeamsPost(req, res) {
   try {
+    assertAdminPin(readAdminPinFromNodeRequest(req));
     const body = JSON.parse(await getBody(req));
     const payload = await saveTeamAssignments({
       assignments: body?.assignments,
@@ -119,9 +129,19 @@ async function handleTeamsPost(req, res) {
       sheetUrl: process.env.SHEET_URL,
     });
 
-    sendJson(res, 200, payload);
+    sendJson(res, 200, payload, req);
   } catch (error) {
-    sendJson(res, 500, { error: error.message });
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
+  }
+}
+
+async function handleAdminSession(req, res) {
+  try {
+    const body = JSON.parse(await getBody(req));
+    assertAdminPin(body?.pin);
+    sendJson(res, 200, { ok: true }, req);
+  } catch (error) {
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
   }
 }
 
@@ -138,8 +158,40 @@ async function handleTickerGet(req, res) {
   }
 }
 
+async function handlePrizeModeGet(req, res) {
+  try {
+    const payload = await createPrizeModePayload({
+      prizeStore: prizeModeStore,
+      seedConfig: seedPrizeModeConfig,
+    });
+
+    sendJson(res, 200, payload, req);
+  } catch (error) {
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
+  }
+}
+
+async function handlePrizeModePost(req, res) {
+  try {
+    assertAdminPin(readAdminPinFromNodeRequest(req));
+    const body = JSON.parse(await getBody(req));
+    const payload = await savePrizeModeConfig({
+      prizeStore: prizeModeStore,
+      seedConfig: seedPrizeModeConfig,
+      active: body?.active,
+      awards: body?.awards,
+      baseVersion: body?.baseVersion,
+    });
+
+    sendJson(res, 200, payload, req);
+  } catch (error) {
+    sendJson(res, getErrorStatus(error), getErrorBody(error), req);
+  }
+}
+
 async function handleTickerPost(req, res) {
   try {
+    assertAdminPin(readAdminPinFromNodeRequest(req));
     const body = JSON.parse(await getBody(req));
     const payload = await saveTickerMessages({
       items: body?.items,
@@ -202,7 +254,7 @@ const server = createServer(async (req, res) => {
         teamStore,
         sheetUrl: process.env.SHEET_URL,
       });
-      sendJson(res, 200, payload, req);
+      sendJson(res, 200, payload, req, { cacheControl: SHEET_API_CACHE_CONTROL });
     } catch (error) {
       sendJson(res, 500, { error: error.message });
     }
@@ -216,7 +268,7 @@ const server = createServer(async (req, res) => {
         sheetUrl: process.env.SHEET_URL,
         teamStore,
       });
-      sendJson(res, 200, payload, req);
+      sendJson(res, 200, payload, req, { cacheControl: SHEET_API_CACHE_CONTROL });
     } catch (error) {
       sendJson(res, 500, { error: error.message });
     }
@@ -227,8 +279,16 @@ const server = createServer(async (req, res) => {
     return req.method === "POST" ? handleTeamsPost(req, res) : handleTeamsGet(req, res);
   }
 
+  if (url.pathname === "/api/admin/session" && req.method === "POST") {
+    return handleAdminSession(req, res);
+  }
+
   if (url.pathname === "/api/ticker") {
     return req.method === "POST" ? handleTickerPost(req, res) : handleTickerGet(req, res);
+  }
+
+  if (url.pathname === "/api/prize-mode") {
+    return req.method === "POST" ? handlePrizeModePost(req, res) : handlePrizeModeGet(req, res);
   }
 
   await serveStatic(url.pathname === "/" ? "/" : decodeURIComponent(url.pathname), req, res);

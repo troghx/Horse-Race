@@ -1,3 +1,11 @@
+import {
+  clearStoredAdminPin,
+  createAdminAuthModal,
+  getStoredAdminPin,
+  requestAdminJson,
+  validateStoredAdminPin,
+} from "./admin-session.js?v=20260317-admin-3";
+
 const state = {
   period: "day",
   individualPeriod: "day",
@@ -15,8 +23,6 @@ const leaderboardBody = $("#leaderboardBody");
 const leaderboardEyebrow = $("#leaderboardEyebrow");
 const leaderboardTitle = $("#leaderboardTitle");
 const leaderboardHeadRow = $("#leaderboardHeadRow");
-const newsRibbon = $("#newsRibbon");
-const tickerButton = $("#tickerButton");
 const tickerText = $("#tickerText");
 const anchorDateInput = $("#anchorDate");
 const refreshButton = $("#refreshButton");
@@ -25,23 +31,12 @@ const viewSwitcher = $("#viewSwitcher");
 const themeToggle = $("#themeToggle");
 const teamBar = $("#teamBar");
 const leaderBanner = $("#leaderBanner");
-const teamModal = $("#teamModal");
-const teamEditor = $("#teamEditor");
-const closeModalBtn = $("#closeModal");
-const saveTeamsBtn = $("#saveTeams");
-const editTeamsBtn = $("#editTeamsBtn");
-const tickerModal = $("#tickerModal");
-const tickerEditor = $("#tickerEditor");
-const closeTickerModalBtn = $("#closeTickerModal");
-const addTickerLineBtn = $("#addTickerLine");
-const saveTickerLinesBtn = $("#saveTickerLines");
+const adminAccessButton = $("#adminAccessButton");
 const prizeModeButton = $("#prizeModeButton");
-const TEAM_EDITOR_PIN = "75572144";
 const VIEW_MODE_KEY = "grand_prix_view_mode_v1";
-const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
 const TICKER_GAP_MS = 900;
 const TICKER_SPEED_PX_PER_SEC = 160;
-const TICKER_SYNC_MS = 15000;
+const TICKER_SYNC_MS = 30000;
 const TICKER_IDLE_MS = 60000;
 const TICKER_ACTIVITY_THROTTLE_MS = 10000;
 const TICKER_REQUEST_TIMEOUT_MS = 12000;
@@ -56,6 +51,10 @@ const prizeState = {
   draftAmount: "",
   awards: {},
   podiumRacers: [],
+  version: 0,
+  updatedAt: "",
+  inputError: "",
+  syncPromise: null,
 };
 const DEFAULT_TICKER_MESSAGES = [
   "El Team ganador sera recompensado con STARBUCKS!",
@@ -66,19 +65,18 @@ const DEFAULT_TICKER_MESSAGES = [
 ];
 const tickerState = {
   items: [],
-  draftItems: [],
   index: 0,
   timerId: 0,
   syncTimerId: 0,
   syncPromise: null,
   version: 0,
   updatedAt: "",
-  pendingPayload: null,
   currentDurationMs: 0,
   presenceTimerId: 0,
   presenceActive: false,
   lastActivitySignalAt: 0,
 };
+const adminAuthModal = createAdminAuthModal();
 
 /* ══ Theme ══ */
 
@@ -191,7 +189,6 @@ function applyTickerPayload(payload, { preserveIndex = true } = {}) {
   tickerState.items = normalized.items;
   tickerState.version = normalized.version;
   tickerState.updatedAt = normalized.updatedAt;
-  tickerState.pendingPayload = null;
 
   if (preserveIndex && previousMessage) {
     const nextIndex = tickerState.items.indexOf(previousMessage);
@@ -230,7 +227,7 @@ async function requestTicker({ method = "GET", body } = {}) {
   }
 }
 
-async function syncTickerFromServer({ force = false } = {}) {
+async function syncTickerFromServer() {
   if (tickerState.syncPromise) return tickerState.syncPromise;
 
   const task = (async () => {
@@ -241,11 +238,6 @@ async function syncTickerFromServer({ force = false } = {}) {
         !areTickerMessagesEqual(payload.items, tickerState.items);
 
       if (!hasChanged) return payload;
-
-      if (!force && tickerModal?.classList.contains("is-open")) {
-        tickerState.pendingPayload = payload;
-        return payload;
-      }
 
       applyTickerPayload(payload, { preserveIndex: true });
       return payload;
@@ -262,19 +254,6 @@ async function syncTickerFromServer({ force = false } = {}) {
   } finally {
     if (tickerState.syncPromise === task) tickerState.syncPromise = null;
   }
-}
-
-async function persistTickerMessages(items) {
-  const payload = await requestTicker({
-    method: "POST",
-    body: {
-      items,
-      baseVersion: tickerState.version,
-    },
-  });
-
-  applyTickerPayload(payload, { preserveIndex: false });
-  return payload;
 }
 
 function stopTickerSync() {
@@ -322,7 +301,7 @@ function scheduleTickerPresenceTimeout() {
   }, TICKER_IDLE_MS);
 }
 
-function refreshTickerPresence({ immediate = false, force = false } = {}) {
+function refreshTickerPresence({ immediate = false } = {}) {
   if (!isTickerPageVisible()) {
     stopTickerPresence();
     return;
@@ -337,11 +316,11 @@ function refreshTickerPresence({ immediate = false, force = false } = {}) {
   }
 
   if (immediate || wasInactive) {
-    syncTickerFromServer({ force });
+    syncTickerFromServer();
   }
 }
 
-function noteTickerActivity({ immediate = false, force = false } = {}) {
+function noteTickerActivity({ immediate = false } = {}) {
   const now = Date.now();
   const wasInactive = !tickerState.presenceActive;
   if (!immediate && !wasInactive && now - tickerState.lastActivitySignalAt < TICKER_ACTIVITY_THROTTLE_MS) {
@@ -349,14 +328,7 @@ function noteTickerActivity({ immediate = false, force = false } = {}) {
   }
 
   tickerState.lastActivitySignalAt = now;
-  refreshTickerPresence({ immediate, force });
-}
-
-function flushPendingTickerPayload() {
-  if (!tickerState.pendingPayload) return;
-  const payload = tickerState.pendingPayload;
-  tickerState.pendingPayload = null;
-  applyTickerPayload(payload, { preserveIndex: true });
+  refreshTickerPresence({ immediate });
 }
 
 function animateTickerText() {
@@ -426,75 +398,6 @@ window.addEventListener("resize", () => {
   }, 120);
 });
 
-function syncTickerEditState() {
-  if (!newsRibbon || !tickerButton) return;
-  newsRibbon.classList.toggle("is-editable", prizeState.active);
-  tickerButton.disabled = !prizeState.active;
-  tickerButton.title = prizeState.active ? "Editar leyendas del ticker" : "Activa prize mode para editar las leyendas";
-}
-
-function captureTickerDraftValues() {
-  if (!tickerEditor) return;
-  const fields = [...tickerEditor.querySelectorAll("[data-ticker-line]")];
-  if (!fields.length) return;
-  tickerState.draftItems = fields.map((field) => field.value);
-}
-
-function renderTickerEditor() {
-  if (!tickerEditor) return;
-  const editorItems = tickerState.draftItems.length ? tickerState.draftItems : [""];
-  tickerEditor.innerHTML = editorItems.map((message, index) => `
-    <div class="ticker-field">
-      <div class="ticker-field-top">
-        <span class="ticker-field-label">Leyenda ${index + 1}</span>
-        ${editorItems.length > 1 ? `
-          <button class="edit-btn ticker-remove" type="button" data-remove-ticker-line="${index}" title="Eliminar leyenda">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        ` : `<span></span>`}
-      </div>
-      <textarea class="ticker-input" data-ticker-line="${index}" placeholder="Escribe una leyenda">${message}</textarea>
-    </div>
-  `).join("");
-
-  if (addTickerLineBtn) {
-    addTickerLineBtn.disabled = editorItems.length >= MAX_TICKER_LINES;
-  }
-}
-
-function openTickerEditor() {
-  if (!prizeState.active || !tickerModal) return;
-  tickerState.draftItems = [...tickerState.items];
-  renderTickerEditor();
-  tickerModal.classList.add("is-open");
-}
-
-function closeTickerEditor() {
-  tickerState.draftItems = [];
-  tickerModal?.classList.remove("is-open");
-  flushPendingTickerPayload();
-}
-
-function loadPrizeAwards() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(PRIZE_AWARDS_KEY) || "{}");
-    return Object.fromEntries(
-      Object.entries(raw)
-        .map(([slot, amount]) => [slot, Number(amount)])
-        .filter(([slot, amount]) => PRIZE_SLOTS.has(slot) && Number.isFinite(amount) && amount > 0),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function savePrizeAwards() {
-  localStorage.setItem(PRIZE_AWARDS_KEY, JSON.stringify(prizeState.awards));
-}
-
 function encodePrizeSlot(slot) {
   return encodeURIComponent(slot);
 }
@@ -514,22 +417,176 @@ function formatPrizeAmount(amount) {
   return `+${formatNumber(amount)} MXN`;
 }
 
+function normalizePrizeAwards(awards) {
+  return Object.fromEntries(
+    Object.entries(awards || {})
+      .map(([slot, amount]) => [slot, Number(amount)])
+      .filter(([slot, amount]) => PRIZE_SLOTS.has(slot) && Number.isFinite(amount) && amount > 0),
+  );
+}
+
+function arePrizeAwardsEqual(left, right) {
+  const leftEntries = Object.entries(left || {});
+  const rightEntries = Object.entries(right || {});
+  if (leftEntries.length !== rightEntries.length) return false;
+  return leftEntries.every(([slot, amount]) => right[slot] === amount);
+}
+
+function normalizePrizeModePayload(payload) {
+  const parsedVersion = Number(payload?.version);
+  return {
+    active: Boolean(payload?.active),
+    awards: normalizePrizeAwards(payload?.awards),
+    version: Number.isFinite(parsedVersion) && parsedVersion > 0 ? parsedVersion : 0,
+    updatedAt: typeof payload?.updatedAt === "string" ? payload.updatedAt : "",
+  };
+}
+
+function applyPrizeModePayload(payload) {
+  const normalized = normalizePrizeModePayload(payload);
+  prizeState.active = normalized.active;
+  prizeState.awards = normalized.awards;
+  prizeState.version = normalized.version;
+  prizeState.updatedAt = normalized.updatedAt;
+  prizeState.inputError = "";
+
+  if (!prizeState.active) {
+    resetPrizeEditor();
+  }
+
+  syncPrizeModeButton();
+  renderPodium(prizeState.podiumRacers);
+}
+
+function syncAdminButton() {
+  if (!adminAccessButton) return;
+  const hasPin = Boolean(getStoredAdminPin());
+  adminAccessButton.classList.toggle("is-active", hasPin);
+  adminAccessButton.title = hasPin ? "Administracion activa" : "Administracion";
+  adminAccessButton.setAttribute("aria-label", hasPin ? "Administracion activa" : "Administracion");
+}
+
+function syncAdminUi() {
+  syncAdminButton();
+  syncPrizeModeButton();
+  renderPodium(prizeState.podiumRacers);
+}
+
 function syncPrizeModeButton() {
   if (!prizeModeButton) return;
   prizeModeButton.classList.toggle("is-active", prizeState.active);
   prizeModeButton.setAttribute("aria-pressed", String(prizeState.active));
+  prizeModeButton.title = getStoredAdminPin()
+    ? prizeState.active ? "Desactivar prize mode" : "Activar prize mode"
+    : "Prize mode solo para admins";
 }
 
-function setPrizeMode(active) {
-  prizeState.active = active;
-  if (!active) {
-    prizeState.editorSlot = "";
-    prizeState.draftAmount = "";
-    closeTickerEditor();
-  }
-  syncPrizeModeButton();
-  syncTickerEditState();
+function promptAdminAccess(options = {}) {
+  return adminAuthModal.prompt({
+    title: options.title || "Acceso admin",
+    description: options.description || "Ingresa el codigo de administracion para continuar.",
+    submitLabel: options.submitLabel || "Continuar",
+    cancelLabel: options.cancelLabel || "Cancelar",
+    allowCancel: options.allowCancel !== false,
+  }).then((pin) => {
+    syncAdminUi();
+    return pin;
+  });
+}
+
+function promptAdminActions() {
+  return adminAuthModal.prompt({
+    mode: "choice",
+    title: "Administracion activa",
+    description: "Puedes entrar a la gestion centralizada o cerrar la administracion en este navegador.",
+    submitLabel: "Gestion centralizada",
+    cancelLabel: "Desactivar administracion",
+    primaryValue: "panel",
+    secondaryValue: "logout",
+    feedbackMessage: "La sesion admin queda activa solo en esta pestaña.",
+  });
+}
+
+function resetPrizeEditor() {
+  prizeState.editorSlot = "";
+  prizeState.draftAmount = "";
+  prizeState.inputError = "";
+}
+
+function focusPrizeEditor(prizeKey) {
+  requestAnimationFrame(() => {
+    podium.querySelector(`[data-prize-input="${prizeKey}"]`)?.focus();
+  });
+}
+
+function openPrizeEditor(prizeKey) {
+  const slot = decodePrizeSlot(prizeKey);
+  if (!slot) return;
+  prizeState.editorSlot = slot;
+  prizeState.draftAmount = String(prizeState.awards[slot] || "");
+  prizeState.inputError = "";
   renderPodium(prizeState.podiumRacers);
+  focusPrizeEditor(prizeKey);
+}
+
+async function requestPrizeMode() {
+  const response = await fetch("/api/prize-mode");
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.error || "No se pudo cargar el prize mode");
+    error.statusCode = response.status;
+    error.current = payload.current || null;
+    throw error;
+  }
+  return payload;
+}
+
+async function syncPrizeModeFromServer() {
+  if (prizeState.syncPromise) return prizeState.syncPromise;
+
+  const task = (async () => {
+    try {
+      const payload = normalizePrizeModePayload(await requestPrizeMode());
+      const sameVersion = payload.version === prizeState.version;
+      const sameActive = payload.active === prizeState.active;
+      const sameAwards = arePrizeAwardsEqual(payload.awards, prizeState.awards);
+      if (sameVersion && sameActive && sameAwards) return payload;
+      applyPrizeModePayload(payload);
+      return payload;
+    } catch (error) {
+      console.error("Error syncing prize mode:", error);
+      return null;
+    }
+  })();
+
+  prizeState.syncPromise = task;
+
+  try {
+    return await task;
+  } finally {
+    if (prizeState.syncPromise === task) prizeState.syncPromise = null;
+  }
+}
+
+async function savePrizeMode({ active = prizeState.active, awards = prizeState.awards } = {}) {
+  const payload = await requestAdminJson("/api/prize-mode", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      active,
+      awards,
+      baseVersion: prizeState.version,
+    }),
+  }, {
+    onAuthRequired: () => promptAdminAccess({
+      title: "Acceso admin",
+      description: "El prize mode es global. Valida tu codigo para editar premios o activarlo.",
+      submitLabel: "Validar acceso",
+    }),
+  });
+
+  applyPrizeModePayload(payload);
+  return payload;
 }
 
 function setActivePeriod(p) {
@@ -719,6 +776,7 @@ function getPodiumEntries(race) {
 
 function renderPodium(racers) {
   prizeState.podiumRacers = racers.slice(0, 3);
+  const canEditPrize = prizeState.active && Boolean(getStoredAdminPin());
 
   if (racers.length < 3) {
     podium.innerHTML = "";
@@ -734,9 +792,10 @@ function renderPodium(racers) {
   podium.innerHTML = medals.map(({ r, cls }) => {
     const prizeKey = encodePrizeSlot(cls);
     const savedPrize = prizeState.awards[cls];
-    const isEditing = prizeState.active && prizeState.editorSlot === cls;
+    const isEditing = canEditPrize && prizeState.editorSlot === cls;
     const hasPrize = Boolean(savedPrize || isEditing);
     const draftValue = isEditing ? prizeState.draftAmount : savedPrize ? String(savedPrize) : "";
+    const prizeError = isEditing ? prizeState.inputError : "";
     const teamLeaderBadge = state.viewMode === "teams" && cls === "gold"
       ? `
         <div class="podium-team-badge">
@@ -745,11 +804,12 @@ function renderPodium(racers) {
       `
       : "";
 
-    const prizeMarkup = prizeState.active && isEditing
+    const prizeMarkup = canEditPrize && isEditing
       ? `
         <div class="podium-prize-zone">
           <div class="podium-prize-editor">
             <input class="prize-input" type="text" inputmode="numeric" placeholder="Monto MXN" value="${draftValue}" data-prize-input="${prizeKey}" />
+            ${prizeError ? `<p class="podium-prize-error">${prizeError}</p>` : ""}
             <div class="podium-prize-actions">
             <button class="prize-confirm-btn" type="button" data-prize-confirm="${prizeKey}">Confirmar premio</button>
             <button class="prize-cancel-btn" type="button" data-prize-cancel="${prizeKey}">Cancelar</button>
@@ -760,13 +820,13 @@ function renderPodium(racers) {
       : savedPrize
         ? `
           <div class="podium-prize-zone podium-prize-has-award">
-            <button class="podium-prize-display ${prizeState.active ? "is-editable" : ""}" ${prizeState.active ? `type="button" data-prize-open="${prizeKey}"` : 'type="button" disabled'}>
+            <button class="podium-prize-display ${canEditPrize ? "is-editable" : ""}" ${canEditPrize ? `type="button" data-prize-open="${prizeKey}"` : 'type="button" disabled'}>
               <span class="podium-prize-amount">${formatPrizeAmount(savedPrize)}</span>
             </button>
-            ${prizeState.active ? `<button class="podium-prize-clear" type="button" data-prize-clear="${prizeKey}" title="Quitar premio">Quitar</button>` : ""}
+            ${canEditPrize ? `<button class="podium-prize-clear" type="button" data-prize-clear="${prizeKey}" title="Quitar premio">Quitar</button>` : ""}
           </div>
         `
-        : prizeState.active
+        : canEditPrize
           ? `
             <div class="podium-prize-zone">
               <button class="podium-prize-slot" type="button" data-prize-open="${prizeKey}" title="Agregar premio"></button>
@@ -871,152 +931,16 @@ function renderRaceView(race) {
   renderLeaderboard(race);
 }
 
-let editorTeams = {};
-let editorAssignments = {};
-prizeState.awards = loadPrizeAwards();
-
-async function openTeamEditor() {
-  const pin = window.prompt("Ingresa el PIN para editar equipos");
-  if (pin === null) return;
-
-  if (pin.trim() !== TEAM_EDITOR_PIN) {
-    window.alert("PIN incorrecto");
-    return;
-  }
-
-  try {
-    const res = await fetch("/api/teams");
-    const data = await res.json();
-    editorTeams = data.teams;
-    editorAssignments = { ...data.assignments };
-    renderEditorColumns();
-    teamModal.classList.add("is-open");
-  } catch (err) {
-    console.error("Error loading teams:", err);
-  }
-}
-
-function closeTeamEditor() {
-  teamModal.classList.remove("is-open");
-}
-
-function renderEditorColumns() {
-  const teamNames = Object.keys(editorTeams);
-  const groups = {};
-  for (const name of teamNames) groups[name] = [];
-
-  for (const [agent, team] of Object.entries(editorAssignments)) {
-    if (groups[team]) groups[team].push(agent);
-    else if (teamNames[0]) { groups[teamNames[0]].push(agent); editorAssignments[agent] = teamNames[0]; }
-  }
-
-  for (const arr of Object.values(groups)) arr.sort((a, b) => a.localeCompare(b, "es"));
-
-  teamEditor.innerHTML = teamNames.map((name) => {
-    const info = editorTeams[name];
-    const agents = groups[name] || [];
-    return `
-      <div class="team-col" data-team="${name}" style="--col-color:${info.color}">
-        <div class="team-col-header">
-          <strong>${name}</strong>
-          <span class="team-col-sup">${info.supervisor || ""}</span>
-        </div>
-        <div class="team-col-list">
-          ${agents.map((a) => `
-            <div class="agent-chip" draggable="true" data-agent="${a}">
-              <span class="chip-dot" style="background:hsl(${hashString(a)} 55% 52%)"></span>
-              ${a}
-            </div>`).join("")}
-        </div>
-      </div>`;
-  }).join("");
-
-  bindDragDrop();
-}
-
-let dragDropBound = false;
-function bindDragDrop() {
-  if (dragDropBound) return;
-  dragDropBound = true;
-
-  teamEditor.addEventListener("dragstart", (e) => {
-    const chip = e.target.closest(".agent-chip");
-    if (!chip) return;
-    e.dataTransfer.setData("text/plain", chip.dataset.agent);
-    e.dataTransfer.effectAllowed = "move";
-    requestAnimationFrame(() => chip.classList.add("dragging"));
-  });
-
-  teamEditor.addEventListener("dragend", (e) => {
-    const chip = e.target.closest(".agent-chip");
-    if (chip) chip.classList.remove("dragging");
-    teamEditor.querySelectorAll(".team-col").forEach((c) => c.classList.remove("drag-over"));
-  });
-
-  teamEditor.addEventListener("dragover", (e) => {
-    const col = e.target.closest(".team-col");
-    if (!col) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    col.classList.add("drag-over");
-  });
-
-  teamEditor.addEventListener("dragleave", (e) => {
-    const col = e.target.closest(".team-col");
-    if (col && !col.contains(e.relatedTarget)) col.classList.remove("drag-over");
-  });
-
-  teamEditor.addEventListener("drop", (e) => {
-    const col = e.target.closest(".team-col");
-    if (!col) return;
-    e.preventDefault();
-    col.classList.remove("drag-over");
-    const agent = e.dataTransfer.getData("text/plain");
-    const newTeam = col.dataset.team;
-    if (agent && newTeam && editorAssignments[agent] !== newTeam) {
-      editorAssignments[agent] = newTeam;
-      renderEditorColumns();
-    }
-  });
-}
-
-async function saveTeamAssignments() {
-  try {
-    saveTeamsBtn.textContent = "Guardando...";
-    await fetch("/api/teams", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assignments: editorAssignments }),
-    });
-    closeTeamEditor();
-    loadRace();
-  } catch (err) {
-    console.error("Error saving teams:", err);
-  } finally {
-    saveTeamsBtn.textContent = "Guardar cambios";
-  }
-}
-
-editTeamsBtn.addEventListener("click", openTeamEditor);
-closeModalBtn.addEventListener("click", closeTeamEditor);
-saveTeamsBtn.addEventListener("click", saveTeamAssignments);
-teamModal.addEventListener("click", (e) => { if (e.target === teamModal) closeTeamEditor(); });
-
 async function togglePrizeMode() {
-  if (prizeState.active) {
-    setPrizeMode(false);
-    return;
+  try {
+    await savePrizeMode({ active: !prizeState.active });
+  } catch (error) {
+    if (error.message === "Se requiere acceso admin para continuar.") return;
+    console.error("Error updating prize mode:", error);
+    if (error.statusCode === 409 && error.current) {
+      applyPrizeModePayload(error.current);
+    }
   }
-
-  const pin = window.prompt("Ingresa el PIN para activar prize mode");
-  if (pin === null) return;
-
-  if (pin.trim() !== TEAM_EDITOR_PIN) {
-    window.alert("PIN incorrecto");
-    return;
-  }
-
-  setPrizeMode(true);
 }
 
 if (prizeModeButton) {
@@ -1025,26 +949,10 @@ if (prizeModeButton) {
 }
 
 if (podium) {
-  podium.addEventListener("click", (e) => {
+  podium.addEventListener("click", async (e) => {
     const openBtn = e.target.closest("[data-prize-open]");
     if (openBtn) {
-      prizeState.editorSlot = decodePrizeSlot(openBtn.dataset.prizeOpen);
-      prizeState.draftAmount = String(prizeState.awards[prizeState.editorSlot] || "");
-      renderPodium(prizeState.podiumRacers);
-      requestAnimationFrame(() => {
-        podium.querySelector(`[data-prize-input="${openBtn.dataset.prizeOpen}"]`)?.focus();
-      });
-      return;
-    }
-
-    const editBtn = e.target.closest("[data-prize-edit]");
-    if (editBtn) {
-      prizeState.editorSlot = decodePrizeSlot(editBtn.dataset.prizeEdit);
-      prizeState.draftAmount = String(prizeState.awards[prizeState.editorSlot] || "");
-      renderPodium(prizeState.podiumRacers);
-      requestAnimationFrame(() => {
-        podium.querySelector(`[data-prize-input="${editBtn.dataset.prizeEdit}"]`)?.focus();
-      });
+      openPrizeEditor(openBtn.dataset.prizeOpen);
       return;
     }
 
@@ -1052,20 +960,26 @@ if (podium) {
     if (clearBtn) {
       const slot = decodePrizeSlot(clearBtn.dataset.prizeClear);
       if (!slot) return;
-      delete prizeState.awards[slot];
-      savePrizeAwards();
-      if (prizeState.editorSlot === slot) {
-        prizeState.editorSlot = "";
-        prizeState.draftAmount = "";
+
+      try {
+        const nextAwards = { ...prizeState.awards };
+        delete nextAwards[slot];
+        await savePrizeMode({ awards: nextAwards });
+        if (prizeState.editorSlot === slot) {
+          resetPrizeEditor();
+        }
+      } catch (error) {
+        console.error("Error clearing prize amount:", error);
+        if (error.statusCode === 409 && error.current) {
+          applyPrizeModePayload(error.current);
+        }
       }
-      renderPodium(prizeState.podiumRacers);
       return;
     }
 
     const cancelBtn = e.target.closest("[data-prize-cancel]");
     if (cancelBtn) {
-      prizeState.editorSlot = "";
-      prizeState.draftAmount = "";
+      resetPrizeEditor();
       renderPodium(prizeState.podiumRacers);
       return;
     }
@@ -1078,15 +992,29 @@ if (podium) {
       const input = podium.querySelector(`[data-prize-input="${prizeKey}"]`);
       const amount = normalizePrizeAmount(input?.value || prizeState.draftAmount);
       if (!amount) {
-        window.alert("Ingresa un monto valido para el premio");
-        input?.focus();
+        prizeState.inputError = "Ingresa un monto valido para el premio.";
+        renderPodium(prizeState.podiumRacers);
+        focusPrizeEditor(prizeKey);
         return;
       }
-      prizeState.awards[slot] = amount;
-      savePrizeAwards();
-      prizeState.editorSlot = "";
-      prizeState.draftAmount = "";
-      renderPodium(prizeState.podiumRacers);
+
+      try {
+        const nextAwards = {
+          ...prizeState.awards,
+          [slot]: amount,
+        };
+        await savePrizeMode({ awards: nextAwards });
+        resetPrizeEditor();
+        renderPodium(prizeState.podiumRacers);
+      } catch (error) {
+        console.error("Error saving prize amount:", error);
+        if (error.statusCode === 409 && error.current) {
+          applyPrizeModePayload(error.current);
+        } else {
+          prizeState.inputError = error.message || "No se pudo guardar el premio.";
+          renderPodium(prizeState.podiumRacers);
+        }
+      }
     }
   });
 
@@ -1094,93 +1022,70 @@ if (podium) {
     const input = e.target.closest("[data-prize-input]");
     if (!input) return;
     prizeState.draftAmount = input.value;
+    prizeState.inputError = "";
   });
 }
 
-if (tickerButton) {
-  tickerButton.addEventListener("click", openTickerEditor);
-}
-
-if (closeTickerModalBtn) {
-  closeTickerModalBtn.addEventListener("click", closeTickerEditor);
-}
-
-if (tickerModal) {
-  tickerModal.addEventListener("click", (e) => {
-    if (e.target === tickerModal) closeTickerEditor();
-  });
-}
-
-if (tickerEditor) {
-  tickerEditor.addEventListener("input", () => {
-    captureTickerDraftValues();
-  });
-
-  tickerEditor.addEventListener("click", (e) => {
-    const removeButton = e.target.closest("[data-remove-ticker-line]");
-    if (!removeButton) return;
-    const index = Number(removeButton.dataset.removeTickerLine);
-    if (!Number.isInteger(index)) return;
-
-    captureTickerDraftValues();
-    const nextItems = tickerState.draftItems.filter((_, itemIndex) => itemIndex !== index);
-    tickerState.draftItems = nextItems.length ? nextItems : [""];
-    renderTickerEditor();
-  });
-}
-
-if (addTickerLineBtn) {
-  addTickerLineBtn.addEventListener("click", () => {
-    captureTickerDraftValues();
-    if (tickerState.draftItems.length >= MAX_TICKER_LINES) return;
-    tickerState.draftItems = [...tickerState.draftItems, ""];
-    renderTickerEditor();
-    requestAnimationFrame(() => {
-      const inputs = tickerEditor?.querySelectorAll("[data-ticker-line]");
-      inputs?.[inputs.length - 1]?.focus();
-    });
-  });
-}
-
-if (saveTickerLinesBtn) {
-  saveTickerLinesBtn.addEventListener("click", async () => {
-    const nextItems = normalizeTickerMessages(
-      [...(tickerEditor?.querySelectorAll("[data-ticker-line]") || [])].map((field) => field.value),
-    );
-
-    if (!nextItems.length) {
-      window.alert("Agrega al menos una leyenda para el ticker");
-      tickerEditor?.querySelector("[data-ticker-line]")?.focus();
-      return;
-    }
-
-    const originalLabel = saveTickerLinesBtn.textContent;
-    saveTickerLinesBtn.disabled = true;
-    saveTickerLinesBtn.textContent = "Guardando...";
-
-    try {
-      await persistTickerMessages(nextItems);
-      closeTickerEditor();
-    } catch (error) {
-      console.error("Error saving ticker:", error);
-
-      if (error.statusCode === 409 && error.current) {
-        applyTickerPayload(error.current, { preserveIndex: true });
-        window.alert("El ticker cambio en otro navegador. Ya cargue la version mas reciente para que puedas revisar y volver a guardar.");
-      } else {
-        window.alert("No se pudieron guardar las leyendas del ticker.");
-      }
-    } finally {
-      saveTickerLinesBtn.disabled = false;
-      saveTickerLinesBtn.textContent = originalLabel;
-    }
-  });
-}
+/* La edicion de ticker vive en /admin.html */
 
 /* ══ Fetch ══ */
 
+const RACE_CACHE_TTL_MS = 60_000;
+const raceRequestCache = new Map();
+
 function getFriendlyErrorMessage() {
   return "Ups, ahorita queda joven.";
+}
+
+function clearRaceCache() {
+  raceRequestCache.clear();
+}
+
+function readRaceCacheEntry(cacheKey) {
+  const entry = raceRequestCache.get(cacheKey);
+  if (!entry) return null;
+  if (!entry.payload) return entry;
+  if (Date.now() > entry.expiresAt) {
+    raceRequestCache.delete(cacheKey);
+    return null;
+  }
+  return entry;
+}
+
+function writeRaceCachePayload(cacheKey, payload) {
+  raceRequestCache.set(cacheKey, {
+    payload,
+    promise: null,
+    expiresAt: Date.now() + RACE_CACHE_TTL_MS,
+  });
+  return payload;
+}
+
+function writeRaceCachePromise(cacheKey, promise) {
+  const current = raceRequestCache.get(cacheKey) || {};
+  raceRequestCache.set(cacheKey, {
+    payload: current.payload || null,
+    promise,
+    expiresAt: current.expiresAt || 0,
+  });
+}
+
+function applyRacePayload(payload) {
+  const { meta, race } = payload;
+  state.latestDate = meta.latestDate;
+  state.earliestDate = meta.earliestDate;
+  state.anchorDate = state.anchorDate || meta.latestDate;
+  state.latestRace = race;
+
+  anchorDateInput.value = state.anchorDate;
+  anchorDateInput.max = meta.latestDate;
+  anchorDateInput.min = meta.earliestDate;
+
+  setActiveViewMode(state.viewMode);
+  renderSummary(meta, race);
+  renderLeaderBanner(race);
+  renderTeamBar(race.teamStandings);
+  renderRaceView(race);
 }
 
 async function loadRace(forceRefresh = false) {
@@ -1189,33 +1094,47 @@ async function loadRace(forceRefresh = false) {
   if (state.anchorDate) params.set("anchor", state.anchorDate);
   if (state.viewMode === "teams") params.set("view", "teams");
   if (forceRefresh) params.set("refresh", "1");
+  const cacheKey = params.toString();
+
+  if (forceRefresh) {
+    clearRaceCache();
+  } else {
+    const cachedEntry = readRaceCacheEntry(cacheKey);
+    if (cachedEntry?.payload) {
+      applyRacePayload(cachedEntry.payload);
+      return;
+    }
+  }
 
   track.innerHTML = `<div class="empty-state">Actualizando...</div>`;
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-    const res = await fetch(`/api/race?${params.toString()}`, { signal: controller.signal });
-    clearTimeout(timeout);
-    const payload = await res.json();
-    if (!res.ok) throw new Error(payload.error || "Error de carga");
+    const currentEntry = !forceRefresh ? readRaceCacheEntry(cacheKey) : null;
+    const pendingPromise = currentEntry?.promise;
 
-    const { meta, race } = payload;
-    state.latestDate = meta.latestDate;
-    state.earliestDate = meta.earliestDate;
-    state.anchorDate = state.anchorDate || meta.latestDate;
-    state.latestRace = race;
+    const requestPromise = pendingPromise || (async () => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 20000);
 
-    anchorDateInput.value = state.anchorDate;
-    anchorDateInput.max = meta.latestDate;
-    anchorDateInput.min = meta.earliestDate;
+      try {
+        const res = await fetch(`/api/race?${params.toString()}`, { signal: controller.signal });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error || "Error de carga");
+        return writeRaceCachePayload(cacheKey, payload);
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
 
-    setActiveViewMode(state.viewMode);
-    renderSummary(meta, race);
-    renderLeaderBanner(race);
-    renderTeamBar(race.teamStandings);
-    renderRaceView(race);
+    if (!pendingPromise) {
+      writeRaceCachePromise(cacheKey, requestPromise);
+    }
+
+    const payload = await requestPromise;
+    writeRaceCachePayload(cacheKey, payload);
+    applyRacePayload(payload);
   } catch (err) {
+    raceRequestCache.delete(cacheKey);
     const friendlyMessage = getFriendlyErrorMessage(err);
     console.error("Error loading race:", err);
     track.innerHTML = `<div class="empty-state">${friendlyMessage}</div>`;
@@ -1256,7 +1175,36 @@ anchorDateInput.addEventListener("change", () => {
   loadRace();
 });
 
-refreshButton.addEventListener("click", () => loadRace(true));
+adminAccessButton?.addEventListener("click", async () => {
+  if (!getStoredAdminPin()) {
+    const pin = await promptAdminAccess({
+      title: "Acceso admin",
+      description: "Ingresa el codigo para abrir la gestion centralizada.",
+      submitLabel: "Entrar al panel",
+    });
+
+    if (pin) {
+      window.location.href = "/admin.html";
+    }
+    return;
+  }
+
+  const action = await promptAdminActions();
+  if (action === "logout") {
+    clearStoredAdminPin();
+    resetPrizeEditor();
+    syncAdminUi();
+    return;
+  }
+
+  if (action === "panel") {
+    window.location.href = "/admin.html";
+  }
+});
+
+refreshButton.addEventListener("click", async () => {
+  await Promise.all([loadRace(true), syncPrizeModeFromServer()]);
+});
 
 /* ══ Jackpot ══ */
 
@@ -1311,21 +1259,23 @@ if (inboundCompetitionButton) {
 })();
 
 applyTickerPayload({ items: DEFAULT_TICKER_MESSAGES, version: 0 }, { preserveIndex: false });
-syncTickerEditState();
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     stopTickerPresence();
     return;
   }
   noteTickerActivity({ immediate: true });
+  syncPrizeModeFromServer();
 });
 window.addEventListener("focus", () => {
   noteTickerActivity({ immediate: true });
+  syncPrizeModeFromServer();
 });
 window.addEventListener("blur", stopTickerPresence);
 window.addEventListener("pagehide", stopTickerPresence);
 window.addEventListener("pageshow", () => {
-  noteTickerActivity({ immediate: true, force: true });
+  noteTickerActivity({ immediate: true });
+  syncPrizeModeFromServer();
 });
 window.addEventListener("pointerdown", () => {
   noteTickerActivity();
@@ -1342,5 +1292,12 @@ window.addEventListener("touchstart", () => {
 window.addEventListener("mousemove", () => {
   noteTickerActivity();
 }, { passive: true });
-noteTickerActivity({ immediate: true, force: true });
-loadRace();
+syncAdminUi();
+noteTickerActivity({ immediate: true });
+Promise.all([
+  loadRace(),
+  syncPrizeModeFromServer(),
+  validateStoredAdminPin().then(() => {
+    syncAdminUi();
+  }),
+]);

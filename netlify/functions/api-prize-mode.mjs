@@ -1,33 +1,34 @@
-import seedTickerConfig from "../../data/ticker.json" with { type: "json" };
+import seedPrizeModeConfig from "../../data/prize-mode.json" with { type: "json" };
 import { assertAdminPin, readAdminPinFromWebRequest } from "../../lib/admin-auth.js";
 
 import {
-  createTickerPayload,
+  createPrizeModePayload,
   jsonResponse,
-  saveTickerMessages,
+  savePrizeModeConfig,
 } from "../../lib/race-service.js";
-import { createBlobTickerStore } from "../../lib/netlify-team-store.js";
+import { createBlobPrizeStore } from "../../lib/netlify-team-store.js";
 
 export default async (request) => {
   try {
-    const tickerStore = createBlobTickerStore();
+    const prizeStore = createBlobPrizeStore();
 
     if (request.method === "POST") {
       assertAdminPin(readAdminPinFromWebRequest(request));
       const body = await request.json();
-      const payload = await saveTickerMessages({
-        items: body?.items,
+      const payload = await savePrizeModeConfig({
+        prizeStore,
+        seedConfig: seedPrizeModeConfig,
+        active: body?.active,
+        awards: body?.awards,
         baseVersion: body?.baseVersion,
-        tickerStore,
-        seedConfig: seedTickerConfig,
       });
 
       return jsonResponse(200, payload);
     }
 
-    const payload = await createTickerPayload({
-      tickerStore,
-      seedConfig: seedTickerConfig,
+    const payload = await createPrizeModePayload({
+      prizeStore,
+      seedConfig: seedPrizeModeConfig,
     });
 
     return jsonResponse(200, payload);
