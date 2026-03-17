@@ -42,6 +42,8 @@ const PRIZE_AWARDS_KEY = "grand_prix_prize_awards_v1";
 const TICKER_GAP_MS = 900;
 const TICKER_SPEED_PX_PER_SEC = 160;
 const TICKER_SYNC_MS = 15000;
+const TICKER_IDLE_MS = 60000;
+const TICKER_ACTIVITY_THROTTLE_MS = 10000;
 const TICKER_REQUEST_TIMEOUT_MS = 12000;
 const MAX_TICKER_LINES = 10;
 const TEAMS_COMPETITION_START = "2026-03-16";
@@ -73,6 +75,9 @@ const tickerState = {
   updatedAt: "",
   pendingPayload: null,
   currentDurationMs: 0,
+  presenceTimerId: 0,
+  presenceActive: false,
+  lastActivitySignalAt: 0,
 };
 
 /* ══ Theme ══ */
@@ -282,9 +287,69 @@ function stopTickerSync() {
 function startTickerSync() {
   stopTickerSync();
   tickerState.syncTimerId = window.setInterval(() => {
-    if (document.hidden) return;
+    if (!tickerState.presenceActive) return;
     syncTickerFromServer();
   }, TICKER_SYNC_MS);
+}
+
+function isTickerPageVisible() {
+  return !document.hidden && document.visibilityState === "visible";
+}
+
+function stopTickerPresence() {
+  stopTickerSync();
+  if (tickerState.presenceTimerId) {
+    window.clearTimeout(tickerState.presenceTimerId);
+    tickerState.presenceTimerId = 0;
+  }
+  tickerState.presenceActive = false;
+}
+
+function scheduleTickerPresenceTimeout() {
+  if (tickerState.presenceTimerId) {
+    window.clearTimeout(tickerState.presenceTimerId);
+  }
+
+  if (!isTickerPageVisible()) {
+    tickerState.presenceTimerId = 0;
+    return;
+  }
+
+  tickerState.presenceTimerId = window.setTimeout(() => {
+    tickerState.presenceTimerId = 0;
+    tickerState.presenceActive = false;
+    stopTickerSync();
+  }, TICKER_IDLE_MS);
+}
+
+function refreshTickerPresence({ immediate = false, force = false } = {}) {
+  if (!isTickerPageVisible()) {
+    stopTickerPresence();
+    return;
+  }
+
+  const wasInactive = !tickerState.presenceActive;
+  tickerState.presenceActive = true;
+  scheduleTickerPresenceTimeout();
+
+  if (wasInactive) {
+    startTickerSync();
+  }
+
+  if (immediate || wasInactive) {
+    syncTickerFromServer({ force });
+  }
+}
+
+function noteTickerActivity({ immediate = false, force = false } = {}) {
+  const now = Date.now();
+  const wasInactive = !tickerState.presenceActive;
+  if (!immediate && !wasInactive && now - tickerState.lastActivitySignalAt < TICKER_ACTIVITY_THROTTLE_MS) {
+    return;
+  }
+
+  tickerState.lastActivitySignalAt = now;
+  refreshTickerPresence({ immediate, force });
 }
 
 function flushPendingTickerPayload() {
@@ -1246,13 +1311,36 @@ if (inboundCompetitionButton) {
 })();
 
 applyTickerPayload({ items: DEFAULT_TICKER_MESSAGES, version: 0 }, { preserveIndex: false });
-startTickerSync();
 syncTickerEditState();
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) syncTickerFromServer();
+  if (document.hidden) {
+    stopTickerPresence();
+    return;
+  }
+  noteTickerActivity({ immediate: true });
 });
 window.addEventListener("focus", () => {
-  syncTickerFromServer();
+  noteTickerActivity({ immediate: true });
 });
-syncTickerFromServer({ force: true });
+window.addEventListener("blur", stopTickerPresence);
+window.addEventListener("pagehide", stopTickerPresence);
+window.addEventListener("pageshow", () => {
+  noteTickerActivity({ immediate: true, force: true });
+});
+window.addEventListener("pointerdown", () => {
+  noteTickerActivity();
+}, { passive: true });
+window.addEventListener("keydown", () => {
+  noteTickerActivity();
+});
+window.addEventListener("scroll", () => {
+  noteTickerActivity();
+}, { passive: true });
+window.addEventListener("touchstart", () => {
+  noteTickerActivity();
+}, { passive: true });
+window.addEventListener("mousemove", () => {
+  noteTickerActivity();
+}, { passive: true });
+noteTickerActivity({ immediate: true, force: true });
 loadRace();
