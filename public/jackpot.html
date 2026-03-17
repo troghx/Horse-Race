@@ -1879,6 +1879,8 @@
       const STEPS = [1_000_000, 2_000_000, 3_000_000, 4_000_000, 5_000_000, 6_000_000, 7_000_000, 8_000_000, 9_000_000];
       const JACKPOT_CACHE_KEY = "grand_prix_jackpot_cache_v1";
       const STAKES_CACHE_KEY = "grand_prix_tug_stakes_v1";
+      const JACKPOT_REFRESH_MS = 60_000;
+      const TUG_EVENT_REFRESH_MS = 1_000;
       const TUG_EVENT_COUNTDOWN_AT = "2026-03-16T08:25:00-05:00";
       const TUG_EVENT_START_AT = "2026-03-16T08:30:00-05:00";
       const TUG_EVENT_END_AT = "2026-03-22T21:00:00-05:00";
@@ -1890,6 +1892,13 @@
         averages: { boys: 0, girls: 0 },
       };
       let tugEventPhase = "";
+      let jackpotSyncPromise = null;
+      const liveUpdateState = {
+        active: false,
+        jackpotTimerId: 0,
+        tugTimerId: 0,
+        hasLoadedJackpot: false,
+      };
 
       const TOW_PIN = "75572144";
       const stakesText = document.getElementById("stakesText");
@@ -2048,10 +2057,15 @@
         return getTugEventPhase(getEventNow()).key === "live";
       }
 
+      function isPageActive() {
+        return !document.hidden && document.visibilityState === "visible";
+      }
+
       function renderTugEventState() {
         const phase = getTugEventPhase(getEventNow());
-        const phaseChanged = phase.key !== tugEventPhase;
-        const becameLive = phaseChanged && phase.key === "live";
+        const previousPhase = tugEventPhase;
+        const phaseChanged = phase.key !== previousPhase;
+        const becameLive = previousPhase && phaseChanged && phase.key === "live";
         tugEventPhase = phase.key;
 
         if (battleNotice) {
@@ -2069,7 +2083,7 @@
         renderTugOfWar();
         renderAgentAverages();
 
-        if (becameLive) {
+        if (becameLive && liveUpdateState.active) {
           loadJackpot();
         }
       }
@@ -2390,24 +2404,93 @@
       }
 
       async function loadJackpot() {
-        try {
-          const ac = new AbortController();
-          const tm = setTimeout(() => ac.abort(), 20000);
-          const res = await fetch("/api/jackpot", { signal: ac.signal });
-          clearTimeout(tm);
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error);
-          writeCache(JACKPOT_CACHE_KEY, data);
-          applyJackpotPayload(data);
-        } catch (err) {
-          console.error("Error loading jackpot:", err);
-          const cached = readCache(JACKPOT_CACHE_KEY);
-          if (cached) {
-            applyJackpotPayload(cached, { stale: true });
-            return;
+        if (jackpotSyncPromise) return jackpotSyncPromise;
+
+        const task = (async () => {
+          try {
+            const ac = new AbortController();
+            const tm = setTimeout(() => ac.abort(), 20000);
+            const res = await fetch("/api/jackpot", { signal: ac.signal });
+            clearTimeout(tm);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            writeCache(JACKPOT_CACHE_KEY, data);
+            applyJackpotPayload(data);
+            liveUpdateState.hasLoadedJackpot = true;
+          } catch (err) {
+            console.error("Error loading jackpot:", err);
+            const cached = readCache(JACKPOT_CACHE_KEY);
+            if (cached) {
+              applyJackpotPayload(cached, { stale: true });
+              return;
+            }
+            if (jpMonth) jpMonth.textContent = "Error al cargar datos";
           }
-          if (jpMonth) jpMonth.textContent = "Error al cargar datos";
+        })();
+
+        jackpotSyncPromise = task;
+
+        try {
+          await task;
+        } finally {
+          if (jackpotSyncPromise === task) jackpotSyncPromise = null;
         }
+      }
+
+      function stopLiveUpdates() {
+        liveUpdateState.active = false;
+
+        if (liveUpdateState.jackpotTimerId) {
+          clearInterval(liveUpdateState.jackpotTimerId);
+          liveUpdateState.jackpotTimerId = 0;
+        }
+
+        if (liveUpdateState.tugTimerId) {
+          clearInterval(liveUpdateState.tugTimerId);
+          liveUpdateState.tugTimerId = 0;
+        }
+      }
+
+      function startLiveUpdates({ immediate = false } = {}) {
+        if (!isPageActive()) {
+          stopLiveUpdates();
+          return;
+        }
+
+        liveUpdateState.active = true;
+
+        if (!liveUpdateState.tugTimerId) {
+          liveUpdateState.tugTimerId = setInterval(() => {
+            if (!isPageActive()) {
+              stopLiveUpdates();
+              return;
+            }
+            renderTugEventState();
+          }, TUG_EVENT_REFRESH_MS);
+        }
+
+        if (!liveUpdateState.jackpotTimerId) {
+          liveUpdateState.jackpotTimerId = setInterval(() => {
+            if (!isPageActive()) {
+              stopLiveUpdates();
+              return;
+            }
+            loadJackpot();
+          }, JACKPOT_REFRESH_MS);
+        }
+
+        if (immediate || !liveUpdateState.hasLoadedJackpot) {
+          loadJackpot();
+        }
+      }
+
+      function syncLiveUpdates(options = {}) {
+        if (isPageActive()) {
+          startLiveUpdates(options);
+          return;
+        }
+
+        stopLiveUpdates();
       }
 
       // Theme from main page
@@ -2419,12 +2502,18 @@
       renderTugEventState();
       renderAgentAverages();
       setupRevealAnimations();
-      loadJackpot();
       window.addEventListener("resize", updateStageScale);
-
-      // Auto refresh every 60s
-      setInterval(loadJackpot, 60_000);
-      setInterval(renderTugEventState, 1_000);
+      document.addEventListener("visibilitychange", () => {
+        syncLiveUpdates({ immediate: !document.hidden });
+      });
+      window.addEventListener("focus", () => {
+        syncLiveUpdates({ immediate: true });
+      });
+      window.addEventListener("pageshow", () => {
+        syncLiveUpdates({ immediate: true });
+      });
+      window.addEventListener("pagehide", stopLiveUpdates);
+      syncLiveUpdates({ immediate: true });
 
       // ── Falling coins (dynamic based on jackpot %) ──
       const coinsContainer = document.getElementById("coinsContainer");
