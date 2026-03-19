@@ -53,8 +53,6 @@ const MAX_TICKER_LINES = 10;
 const TEAMS_COMPETITION_START = "2026-03-16";
 const TEAMS_COMPETITION_END = "2026-03-19";
 const TEAM_RACE_TIME_ZONE = "America/Cancun";
-const TEAM_RACE_TEST_MODE = true;
-const TEAM_RACE_TEST_SECONDS = 10;
 const TEAMS_WINNER_REVEAL_DATE = "2026-03-20";
 const TEAMS_WINNER_SPLASH_STORAGE_KEY = `grand_prix_teams_winner_seen_${TEAMS_WINNER_REVEAL_DATE}`;
 const TEAMS_WINNER_SPLASH_AVATAR = "/AvatarSBKS.png?v=20260316-1322";
@@ -77,8 +75,6 @@ const teamsWinnerSplashState = {
 };
 const teamRaceCountdownState = {
   timerId: 0,
-  deadlineMs: 0,
-  completed: false,
 };
 const DEFAULT_TICKER_MESSAGES = [
   "El Team ganador sera recompensado con STARBUCKS!",
@@ -232,32 +228,12 @@ function getTeamRaceMidnightCountdownMs(now = new Date()) {
   );
   return Math.max(target.getTime() - now.getTime(), 0);
 }
-function getTeamRaceCountdownMs(now = Date.now()) {
-  if (TEAM_RACE_TEST_MODE) {
-    if (!teamRaceCountdownState.deadlineMs) {
-      teamRaceCountdownState.deadlineMs = now + (TEAM_RACE_TEST_SECONDS * 1000);
-    }
-    return Math.max(teamRaceCountdownState.deadlineMs - now, 0);
-  }
-  return getTeamRaceMidnightCountdownMs(new Date(now));
-}
 function renderTeamRaceCountdown() {
   if (!teamRaceCountdownValue) return;
-  const remainingMs = getTeamRaceCountdownMs();
-  teamRaceCountdownValue.textContent = formatCountdown(remainingMs);
-
-  if (remainingMs > 0 || teamRaceCountdownState.completed) return;
-  teamRaceCountdownState.completed = true;
-  if (teamRaceCountdownState.timerId) {
-    window.clearInterval(teamRaceCountdownState.timerId);
-    teamRaceCountdownState.timerId = 0;
-  }
-  maybeShowTeamsWinnerSplash({ force: true });
+  teamRaceCountdownValue.textContent = formatCountdown(getTeamRaceMidnightCountdownMs());
 }
 function startTeamRaceCountdown() {
   if (!teamRaceCountdownValue) return;
-  teamRaceCountdownState.completed = false;
-  teamRaceCountdownState.deadlineMs = TEAM_RACE_TEST_MODE ? Date.now() + (TEAM_RACE_TEST_SECONDS * 1000) : 0;
   renderTeamRaceCountdown();
   if (teamRaceCountdownState.timerId) {
     window.clearInterval(teamRaceCountdownState.timerId);
@@ -1540,7 +1516,7 @@ noteTickerActivity({ immediate: true });
 startTeamRaceCountdown();
 Promise.all([
   loadRace(),
-  TEAM_RACE_TEST_MODE ? Promise.resolve(null) : maybeShowTeamsWinnerSplash(),
+  maybeShowTeamsWinnerSplash(),
   syncPrizeModeFromServer(),
   validateStoredAdminPin().then(() => {
     syncAdminUi();
