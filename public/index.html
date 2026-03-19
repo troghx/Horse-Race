@@ -11,7 +11,7 @@
       href="https://fonts.googleapis.com/css2?family=Racing+Sans+One&family=Space+Grotesk:wght@400;500;700&family=Outfit:wght@400;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css?v=20260317-admin-2" />
+    <link rel="stylesheet" href="/styles.css?v=20260319-team-race-countdown-1" />
   </head>
   <body>
     <main class="shell">
@@ -30,6 +30,10 @@
               </div>
             </div>
             <span class="topbar-stats" id="summaryCards" style="display:none"></span>
+            <div class="team-race-countdown" id="teamRaceCountdown" aria-live="polite">
+              <span class="team-race-countdown-label">Team Race finaliza en</span>
+              <strong class="team-race-countdown-value" id="teamRaceCountdownValue">00:00:00</strong>
+            </div>
           </div>
         </div>
         <div class="topbar-center">
@@ -142,6 +146,45 @@
 
     </main>
 
+    <div class="winner-splash" id="winnerSplash" aria-hidden="true">
+      <div class="winner-splash-fireworks" aria-hidden="true">
+        <span class="winner-firework winner-firework--1"></span>
+        <span class="winner-firework winner-firework--2"></span>
+        <span class="winner-firework winner-firework--3"></span>
+        <span class="winner-firework winner-firework--4"></span>
+        <span class="winner-firework winner-firework--5"></span>
+        <span class="winner-firework winner-firework--6"></span>
+        <span class="winner-firework winner-firework--7"></span>
+        <span class="winner-firework winner-firework--8"></span>
+      </div>
+      <div class="winner-splash-card" role="dialog" aria-modal="true" aria-labelledby="winnerSplashTitle">
+        <button class="winner-splash-close" id="winnerSplashClose" type="button" aria-label="Cerrar anuncio de team ganador">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <p class="winner-splash-kicker">Ganador del evento teams</p>
+        <h2 class="winner-splash-title" id="winnerSplashTitle">Cargando team ganador...</h2>
+        <p class="winner-splash-meta" id="winnerSplashMeta">Preparando resultado final.</p>
+        <div class="winner-splash-hero">
+          <div class="winner-splash-avatar-wrap">
+            <img
+              src="/AvatarSBKS.png?v=20260316-1322"
+              alt="Personaje del team ganador"
+              class="winner-splash-avatar"
+              id="winnerSplashAvatar"
+            />
+          </div>
+        </div>
+        <div class="winner-splash-details">
+          <span class="winner-splash-pill" id="winnerSplashSupervisor">Supervisor: --</span>
+          <span class="winner-splash-pill" id="winnerSplashDeals">Deals: --</span>
+        </div>
+        <button class="winner-splash-enter" id="winnerSplashEnter" type="button">Entrar al Grand Prix</button>
+      </div>
+    </div>
+
     <div class="modal-overlay" id="adminAuthModal" aria-hidden="true">
       <div class="modal-card modal-card--compact modal-card--narrow">
         <div class="modal-top">
@@ -171,6 +214,6 @@
       </div>
     </div>
 
-    <script type="module" src="/app.js?v=20260317-admin-3"></script>
+    <script type="module" src="/app.js?v=20260319-team-race-countdown-1"></script>
   </body>
 </html>

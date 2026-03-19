@@ -31,6 +31,15 @@ const viewSwitcher = $("#viewSwitcher");
 const themeToggle = $("#themeToggle");
 const teamBar = $("#teamBar");
 const leaderBanner = $("#leaderBanner");
+const teamRaceCountdownValue = $("#teamRaceCountdownValue");
+const winnerSplash = $("#winnerSplash");
+const winnerSplashClose = $("#winnerSplashClose");
+const winnerSplashTitle = $("#winnerSplashTitle");
+const winnerSplashMeta = $("#winnerSplashMeta");
+const winnerSplashAvatar = $("#winnerSplashAvatar");
+const winnerSplashSupervisor = $("#winnerSplashSupervisor");
+const winnerSplashDeals = $("#winnerSplashDeals");
+const winnerSplashEnter = $("#winnerSplashEnter");
 const adminAccessButton = $("#adminAccessButton");
 const prizeModeButton = $("#prizeModeButton");
 const VIEW_MODE_KEY = "grand_prix_view_mode_v1";
@@ -43,6 +52,12 @@ const TICKER_REQUEST_TIMEOUT_MS = 12000;
 const MAX_TICKER_LINES = 10;
 const TEAMS_COMPETITION_START = "2026-03-16";
 const TEAMS_COMPETITION_END = "2026-03-19";
+const TEAM_RACE_TIME_ZONE = "America/Cancun";
+const TEAM_RACE_TEST_MODE = true;
+const TEAM_RACE_TEST_SECONDS = 10;
+const TEAMS_WINNER_REVEAL_DATE = "2026-03-20";
+const TEAMS_WINNER_SPLASH_STORAGE_KEY = `grand_prix_teams_winner_seen_${TEAMS_WINNER_REVEAL_DATE}`;
+const TEAMS_WINNER_SPLASH_AVATAR = "/AvatarSBKS.png?v=20260316-1322";
 const PRIZE_SLOTS = new Set(["gold", "silver", "bronze"]);
 const TEAMS_COMPETITION_HINT = `La competencia por teams usa el corte fijo del ${TEAMS_COMPETITION_START} al ${TEAMS_COMPETITION_END}.`;
 const prizeState = {
@@ -55,6 +70,15 @@ const prizeState = {
   updatedAt: "",
   inputError: "",
   syncPromise: null,
+};
+const teamsWinnerSplashState = {
+  open: false,
+  loadingPromise: null,
+};
+const teamRaceCountdownState = {
+  timerId: 0,
+  deadlineMs: 0,
+  completed: false,
 };
 const DEFAULT_TICKER_MESSAGES = [
   "El Team ganador sera recompensado con STARBUCKS!",
@@ -125,6 +149,121 @@ function formatNumber(v) { return fmtNumber.format(v); }
 function formatMoney(v) { return fmtMoney.format(v); }
 function formatDate(v) { return fmtDate.format(new Date(`${v}T00:00:00Z`)); }
 function formatMonthYear(v) { return fmtMonthYear.format(new Date(`${v}T00:00:00Z`)); }
+function formatLocalIsoDate(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+function padCountdownUnit(value) {
+  return String(Math.max(0, value)).padStart(2, "0");
+}
+function formatCountdown(msRemaining) {
+  const safeMs = Math.max(0, msRemaining);
+  const totalSeconds = Math.floor(safeMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${padCountdownUnit(hours)}:${padCountdownUnit(minutes)}:${padCountdownUnit(seconds)}`;
+}
+function getTimeZoneParts(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(date);
+  const lookup = Object.fromEntries(parts.filter((part) => part.type !== "literal").map((part) => [part.type, part.value]));
+  return {
+    year: Number(lookup.year),
+    month: Number(lookup.month),
+    day: Number(lookup.day),
+    hour: Number(lookup.hour),
+    minute: Number(lookup.minute),
+    second: Number(lookup.second),
+  };
+}
+function getTimeZoneOffsetMs(date, timeZone) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    timeZoneName: "shortOffset",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = formatter.formatToParts(date);
+  const offsetLabel = parts.find((part) => part.type === "timeZoneName")?.value || "GMT+0";
+  const match = offsetLabel.match(/(?:GMT|UTC)([+-])(\d{1,2})(?::?(\d{2}))?/i);
+  if (!match) return 0;
+  const sign = match[1] === "-" ? -1 : 1;
+  const hours = Number(match[2] || 0);
+  const minutes = Number(match[3] || 0);
+  return sign * ((hours * 60) + minutes) * 60_000;
+}
+function getUtcDateForTimeZoneLocal(timeZone, year, month, day, hour = 0, minute = 0, second = 0) {
+  let candidateMs = Date.UTC(year, month - 1, day, hour, minute, second);
+  for (let i = 0; i < 4; i++) {
+    const offsetMs = getTimeZoneOffsetMs(new Date(candidateMs), timeZone);
+    const adjustedMs = Date.UTC(year, month - 1, day, hour, minute, second) - offsetMs;
+    if (Math.abs(adjustedMs - candidateMs) < 1000) {
+      candidateMs = adjustedMs;
+      break;
+    }
+    candidateMs = adjustedMs;
+  }
+  return new Date(candidateMs);
+}
+function getTeamRaceMidnightCountdownMs(now = new Date()) {
+  const current = getTimeZoneParts(now, TEAM_RACE_TIME_ZONE);
+  const nextDayUtc = new Date(Date.UTC(current.year, current.month - 1, current.day + 1));
+  const target = getUtcDateForTimeZoneLocal(
+    TEAM_RACE_TIME_ZONE,
+    nextDayUtc.getUTCFullYear(),
+    nextDayUtc.getUTCMonth() + 1,
+    nextDayUtc.getUTCDate(),
+    0,
+    0,
+    0,
+  );
+  return Math.max(target.getTime() - now.getTime(), 0);
+}
+function getTeamRaceCountdownMs(now = Date.now()) {
+  if (TEAM_RACE_TEST_MODE) {
+    if (!teamRaceCountdownState.deadlineMs) {
+      teamRaceCountdownState.deadlineMs = now + (TEAM_RACE_TEST_SECONDS * 1000);
+    }
+    return Math.max(teamRaceCountdownState.deadlineMs - now, 0);
+  }
+  return getTeamRaceMidnightCountdownMs(new Date(now));
+}
+function renderTeamRaceCountdown() {
+  if (!teamRaceCountdownValue) return;
+  const remainingMs = getTeamRaceCountdownMs();
+  teamRaceCountdownValue.textContent = formatCountdown(remainingMs);
+
+  if (remainingMs > 0 || teamRaceCountdownState.completed) return;
+  teamRaceCountdownState.completed = true;
+  if (teamRaceCountdownState.timerId) {
+    window.clearInterval(teamRaceCountdownState.timerId);
+    teamRaceCountdownState.timerId = 0;
+  }
+  maybeShowTeamsWinnerSplash({ force: true });
+}
+function startTeamRaceCountdown() {
+  if (!teamRaceCountdownValue) return;
+  teamRaceCountdownState.completed = false;
+  teamRaceCountdownState.deadlineMs = TEAM_RACE_TEST_MODE ? Date.now() + (TEAM_RACE_TEST_SECONDS * 1000) : 0;
+  renderTeamRaceCountdown();
+  if (teamRaceCountdownState.timerId) {
+    window.clearInterval(teamRaceCountdownState.timerId);
+  }
+  teamRaceCountdownState.timerId = window.setInterval(renderTeamRaceCountdown, 1000);
+}
 function formatShortName(value) {
   const parts = String(value || "").trim().split(/\s+/).filter(Boolean);
   if (parts.length <= 1) return parts[0] || "";
@@ -492,6 +631,99 @@ function promptAdminAccess(options = {}) {
     syncAdminUi();
     return pin;
   });
+}
+
+function shouldShowTeamsWinnerSplash(options = {}) {
+  const force = Boolean(options.force);
+  if (!winnerSplash) return false;
+  if (!force && localStorage.getItem(TEAMS_WINNER_SPLASH_STORAGE_KEY)) return false;
+  return force || formatLocalIsoDate() >= TEAMS_WINNER_REVEAL_DATE;
+}
+
+function markTeamsWinnerSplashSeen() {
+  localStorage.setItem(TEAMS_WINNER_SPLASH_STORAGE_KEY, formatLocalIsoDate());
+}
+
+function closeTeamsWinnerSplash() {
+  if (!winnerSplash || !teamsWinnerSplashState.open) return;
+  teamsWinnerSplashState.open = false;
+  winnerSplash.classList.remove("is-open");
+  winnerSplash.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("winner-splash-open");
+}
+
+function openTeamsWinnerSplash(team, race, options = {}) {
+  const force = Boolean(options.force);
+  if (!winnerSplash || !team || teamsWinnerSplashState.open || !shouldShowTeamsWinnerSplash({ force })) return;
+
+  if (!force) {
+    markTeamsWinnerSplashSeen();
+  }
+  teamsWinnerSplashState.open = true;
+
+  if (winnerSplashTitle) winnerSplashTitle.textContent = team.team || "Team ganador";
+  if (winnerSplashMeta) winnerSplashMeta.textContent = `Cierre ${formatDate(race.start)} — ${formatDate(race.end)}`;
+  if (winnerSplashAvatar) winnerSplashAvatar.src = TEAMS_WINNER_SPLASH_AVATAR;
+  if (winnerSplashSupervisor) {
+    winnerSplashSupervisor.textContent = `Supervisor: ${team.supervisor || "Sin supervisor"}`;
+  }
+  if (winnerSplashDeals) {
+    winnerSplashDeals.textContent = `Deals: ${formatNumber(team.count || 0)}`;
+  }
+
+  winnerSplash.classList.add("is-open");
+  winnerSplash.setAttribute("aria-hidden", "false");
+  document.body.classList.add("winner-splash-open");
+  requestAnimationFrame(() => {
+    winnerSplashEnter?.focus();
+  });
+}
+
+async function maybeShowTeamsWinnerSplash(options = {}) {
+  const force = Boolean(options.force);
+  if (!shouldShowTeamsWinnerSplash({ force })) return null;
+  if (teamsWinnerSplashState.loadingPromise) return teamsWinnerSplashState.loadingPromise;
+
+  const task = (async () => {
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const params = new URLSearchParams({
+        period: "week",
+        view: "teams",
+        anchor: TEAMS_COMPETITION_END,
+      });
+      const response = await fetch(`/api/race?${params.toString()}`, { signal: controller.signal });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || "No se pudo cargar el ganador de teams");
+      }
+
+      const winnerTeam = payload?.race?.teamStandings?.[0];
+      if (winnerTeam && shouldShowTeamsWinnerSplash({ force })) {
+        openTeamsWinnerSplash(winnerTeam, payload.race, { force });
+      }
+
+      return payload;
+    } catch (error) {
+      console.error("Error loading teams winner splash:", error);
+      return null;
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
+  })();
+
+  teamsWinnerSplashState.loadingPromise = task;
+
+  try {
+    return await task;
+  } finally {
+    if (teamsWinnerSplashState.loadingPromise === task) {
+      teamsWinnerSplashState.loadingPromise = null;
+    }
+  }
 }
 
 function promptAdminActions() {
@@ -1175,6 +1407,13 @@ anchorDateInput.addEventListener("change", () => {
   loadRace();
 });
 
+winnerSplashClose?.addEventListener("click", closeTeamsWinnerSplash);
+winnerSplashEnter?.addEventListener("click", closeTeamsWinnerSplash);
+winnerSplash?.addEventListener("click", (event) => {
+  if (event.target !== winnerSplash) return;
+  closeTeamsWinnerSplash();
+});
+
 adminAccessButton?.addEventListener("click", async () => {
   if (!getStoredAdminPin()) {
     const pin = await promptAdminAccess({
@@ -1292,10 +1531,16 @@ window.addEventListener("touchstart", () => {
 window.addEventListener("mousemove", () => {
   noteTickerActivity();
 }, { passive: true });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !winnerSplash?.classList.contains("is-open")) return;
+  closeTeamsWinnerSplash();
+});
 syncAdminUi();
 noteTickerActivity({ immediate: true });
+startTeamRaceCountdown();
 Promise.all([
   loadRace(),
+  TEAM_RACE_TEST_MODE ? Promise.resolve(null) : maybeShowTeamsWinnerSplash(),
   syncPrizeModeFromServer(),
   validateStoredAdminPin().then(() => {
     syncAdminUi();
