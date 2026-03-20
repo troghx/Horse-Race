@@ -31,6 +31,7 @@ const viewSwitcher = $("#viewSwitcher");
 const themeToggle = $("#themeToggle");
 const teamBar = $("#teamBar");
 const leaderBanner = $("#leaderBanner");
+const teamRaceCountdownLabel = $("#teamRaceCountdown .team-race-countdown-label");
 const teamRaceCountdownValue = $("#teamRaceCountdownValue");
 const winnerSplash = $("#winnerSplash");
 const winnerSplashClose = $("#winnerSplashClose");
@@ -53,6 +54,8 @@ const MAX_TICKER_LINES = 10;
 const TEAMS_COMPETITION_START = "2026-03-16";
 const TEAMS_COMPETITION_END = "2026-03-19";
 const TEAM_RACE_TIME_ZONE = "America/Cancun";
+const TEAM_RACE_COUNTDOWN_LABEL_LIVE = "Team Race finaliza en";
+const TEAM_RACE_COUNTDOWN_LABEL_DONE = "Team Race finalizó";
 const TEAMS_WINNER_REVEAL_DATE = "2026-03-20";
 const TEAMS_WINNER_SPLASH_STORAGE_KEY = `grand_prix_teams_winner_seen_${TEAMS_WINNER_REVEAL_DATE}`;
 const TEAMS_WINNER_SPLASH_AVATAR = "/AvatarSBKS.png?v=20260316-1322";
@@ -214,9 +217,9 @@ function getUtcDateForTimeZoneLocal(timeZone, year, month, day, hour = 0, minute
   }
   return new Date(candidateMs);
 }
-function getTeamRaceMidnightCountdownMs(now = new Date()) {
-  const current = getTimeZoneParts(now, TEAM_RACE_TIME_ZONE);
-  const nextDayUtc = new Date(Date.UTC(current.year, current.month - 1, current.day + 1));
+function getTeamRaceEndCountdownMs(now = new Date()) {
+  const [year, month, day] = TEAMS_COMPETITION_END.split("-").map(Number);
+  const nextDayUtc = new Date(Date.UTC(year, month - 1, day + 1));
   const target = getUtcDateForTimeZoneLocal(
     TEAM_RACE_TIME_ZONE,
     nextDayUtc.getUTCFullYear(),
@@ -230,14 +233,24 @@ function getTeamRaceMidnightCountdownMs(now = new Date()) {
 }
 function renderTeamRaceCountdown() {
   if (!teamRaceCountdownValue) return;
-  teamRaceCountdownValue.textContent = formatCountdown(getTeamRaceMidnightCountdownMs());
+  const remainingMs = getTeamRaceEndCountdownMs();
+  teamRaceCountdownValue.textContent = formatCountdown(remainingMs);
+  if (teamRaceCountdownLabel) {
+    teamRaceCountdownLabel.textContent = remainingMs > 0 ? TEAM_RACE_COUNTDOWN_LABEL_LIVE : TEAM_RACE_COUNTDOWN_LABEL_DONE;
+  }
+  if (!remainingMs && teamRaceCountdownState.timerId) {
+    window.clearInterval(teamRaceCountdownState.timerId);
+    teamRaceCountdownState.timerId = 0;
+  }
 }
 function startTeamRaceCountdown() {
   if (!teamRaceCountdownValue) return;
-  renderTeamRaceCountdown();
   if (teamRaceCountdownState.timerId) {
     window.clearInterval(teamRaceCountdownState.timerId);
+    teamRaceCountdownState.timerId = 0;
   }
+  renderTeamRaceCountdown();
+  if (!getTeamRaceEndCountdownMs()) return;
   teamRaceCountdownState.timerId = window.setInterval(renderTeamRaceCountdown, 1000);
 }
 function formatShortName(value) {
